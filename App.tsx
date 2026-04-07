@@ -20,14 +20,14 @@ import { UserRole, AuthView } from './types';
 
 function App() {
   // Auth State
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authView, setAuthView] = useState<AuthView>('login');
   
   // Temporary Registration Data for Pricing Flow
   const [registrationData, setRegistrationData] = useState<{name: string, phone: string, email: string, role: UserRole} | null>(null);
 
   // App State
-  const [showLanding, setShowLanding] = useState(false); // Default to Landing
+  const [showLanding, setShowLanding] = useState(true); // Default to Landing
   const [showWelcomeWizard, setShowWelcomeWizard] = useState(false); // Controls the 2026/Split Payment guide AFTER login
   const [showPublicOnboarding, setShowPublicOnboarding] = useState(false); // Controls pre-login onboarding
   const [publicOnboardingStep, setPublicOnboardingStep] = useState(0);
