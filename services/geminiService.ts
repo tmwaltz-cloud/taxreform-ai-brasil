@@ -2,10 +2,15 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { UserRole, SimulationInput, SimulationResult, NewsItem, SupplyChainInput, SupplyChainResult, AccountantGuideData } from "../types";
 
 // Initialize Gemini Client
-// We assume process.env.API_KEY is available.
+// Lê a chave via import.meta.env (padrão Vite) com fallbacks para compatibilidade
+const geminiApiKey =
+  import.meta.env.VITE_GEMINI_API_KEY ||
+  (typeof process !== 'undefined' && (process.env?.API_KEY || process.env?.GEMINI_API_KEY)) ||
+  '';
+
 let ai: GoogleGenAI;
 try {
-  ai = new GoogleGenAI({ apiKey: process.env.API_KEY || process.env.GEMINI_API_KEY || '' });
+  ai = new GoogleGenAI({ apiKey: geminiApiKey });
 } catch (e) {
   console.error("Failed to initialize GoogleGenAI", e);
 }
