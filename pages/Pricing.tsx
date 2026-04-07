@@ -1,4 +1,11 @@
 import { useState } from "react";
+import { UserRole, AuthView } from "../types";
+
+// ─── Props compatíveis com App.tsx ─────────────────────────────────────────
+interface PricingProps {
+  onNavigate: (view: AuthView) => void;
+  userData?: { name: string; phone: string; email: string; role: UserRole } | null;
+}
 
 // ─── Configuração dos planos ───────────────────────────────────────────────
 const PLANS = [
@@ -52,7 +59,6 @@ const PLANS = [
   },
 ];
 
-// ─── Ícones SVG inline ─────────────────────────────────────────────────────
 const CheckIcon = () => (
   <svg className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -71,24 +77,30 @@ const ShieldIcon = () => (
   </svg>
 );
 
-// ─── Componente principal ──────────────────────────────────────────────────
-export function Pricing() {
+export function Pricing({ onNavigate, userData }: PricingProps) {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
+  const hasAccount = !!userData?.email;
+  const savings = 27 * 12 - 97;
 
   const handleCTA = (url: string) => {
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (hasAccount) {
+      onNavigate('login');
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
   };
-
-  // Economia calculada: 97 vs 27*12 = 324
-  const savings = 27 * 12 - 97;
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white flex flex-col">
-      {/* ── Header ── */}
       <div className="pt-16 pb-10 px-4 text-center">
         <p className="text-xs font-semibold tracking-[0.25em] text-emerald-400 uppercase mb-3">
           Planos TaxReform.ai Brasil
         </p>
+        {userData?.name && (
+          <p className="text-slate-400 text-sm mb-2">
+            Olá, <span className="text-white font-semibold">{userData.name}</span>! Escolha seu plano para ativar o acesso.
+          </p>
+        )}
         <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight mb-4">
           Escolha como você quer<br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
@@ -99,8 +111,6 @@ export function Pricing() {
           Acesso à inteligência tributária que os grandes escritórios já usam —
           agora disponível para consultores e contadores independentes.
         </p>
-
-        {/* Economia badge */}
         <div className="inline-flex items-center gap-2 mt-5 bg-amber-500/10 border border-amber-500/30 rounded-full px-4 py-1.5">
           <span className="text-amber-400 text-xs font-semibold">
             💡 Vitalício economiza R${savings} vs 12 meses de assinatura
@@ -108,7 +118,6 @@ export function Pricing() {
         </div>
       </div>
 
-      {/* ── Cards ── */}
       <div className="flex-1 flex items-start justify-center px-4 pb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
           {PLANS.map((plan) => (
@@ -116,16 +125,12 @@ export function Pricing() {
               key={plan.id}
               onMouseEnter={() => setHoveredPlan(plan.id)}
               onMouseLeave={() => setHoveredPlan(null)}
-              className={`
-                relative rounded-2xl border transition-all duration-300 flex flex-col
-                ${plan.highlight
+              className={`relative rounded-2xl border transition-all duration-300 flex flex-col ${
+                plan.highlight
                   ? "border-emerald-500/60 bg-gradient-to-b from-emerald-950/60 to-[#0B1120] shadow-[0_0_40px_rgba(52,211,153,0.12)]"
                   : "border-slate-700/50 bg-slate-900/40"
-                }
-                ${hoveredPlan === plan.id ? "scale-[1.02] shadow-xl" : ""}
-              `}
+              } ${hoveredPlan === plan.id ? "scale-[1.02] shadow-xl" : ""}`}
             >
-              {/* Badge destaque */}
               {plan.badge && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                   <span className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-[11px] font-bold tracking-wide px-4 py-1 rounded-full shadow-lg whitespace-nowrap">
@@ -133,17 +138,13 @@ export function Pricing() {
                   </span>
                 </div>
               )}
-
               <div className="p-7 flex flex-col flex-1">
-                {/* Nome e descrição */}
                 <div className="mb-5">
                   <h2 className={`text-lg font-bold mb-1 ${plan.highlight ? "text-emerald-300" : "text-slate-200"}`}>
                     {plan.name}
                   </h2>
                   <p className="text-slate-500 text-sm leading-snug">{plan.description}</p>
                 </div>
-
-                {/* Preço */}
                 <div className="mb-6">
                   <div className="flex items-end gap-1">
                     <span className="text-slate-400 text-sm font-medium">R$</span>
@@ -159,8 +160,6 @@ export function Pricing() {
                     <p className="text-emerald-600 text-xs mt-1 font-medium">pagamento único · acesso para sempre</p>
                   )}
                 </div>
-
-                {/* Features */}
                 <ul className="space-y-2.5 mb-7 flex-1">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
@@ -175,19 +174,15 @@ export function Pricing() {
                     </li>
                   ))}
                 </ul>
-
-                {/* CTA */}
                 <button
                   onClick={() => handleCTA(plan.kiwifyUrl)}
-                  className={`
-                    w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-200
-                    ${plan.highlight
+                  className={`w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 ${
+                    plan.highlight
                       ? "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-[0_4px_20px_rgba(52,211,153,0.35)] hover:shadow-[0_4px_28px_rgba(52,211,153,0.5)] hover:-translate-y-0.5"
                       : "bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600/50"
-                    }
-                  `}
+                  }`}
                 >
-                  {plan.cta}
+                  {hasAccount ? "Acessar Plataforma" : plan.cta}
                 </button>
               </div>
             </div>
@@ -195,7 +190,15 @@ export function Pricing() {
         </div>
       </div>
 
-      {/* ── Garantia ── */}
+      <div className="text-center pb-6">
+        <button
+          onClick={() => onNavigate('login')}
+          className="text-slate-500 hover:text-slate-300 text-sm underline transition"
+        >
+          Já tenho acesso — fazer login
+        </button>
+      </div>
+
       <div className="pb-12 px-4">
         <div className="max-w-md mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -203,13 +206,11 @@ export function Pricing() {
             <span className="text-slate-400 text-sm font-medium">Garantia de 7 dias</span>
           </div>
           <p className="text-slate-600 text-xs leading-relaxed">
-            Não ficou satisfeito? Solicite reembolso total em até 7 dias
-            diretamente pela plataforma Kiwify. Sem burocracia.
+            Não ficou satisfeito? Solicite reembolso total em até 7 dias diretamente pela plataforma Kiwify. Sem burocracia.
           </p>
         </div>
       </div>
 
-      {/* ── FAQ rápido ── */}
       <div className="pb-16 px-4 border-t border-slate-800/50">
         <div className="max-w-xl mx-auto pt-10">
           <h3 className="text-center text-slate-400 text-sm font-semibold uppercase tracking-widest mb-6">
@@ -217,18 +218,9 @@ export function Pricing() {
           </h3>
           <div className="space-y-4">
             {[
-              {
-                q: "O que significa acesso vitalício?",
-                a: "Você paga uma única vez e tem acesso permanente à plataforma, incluindo todas as atualizações futuras da Reforma Tributária.",
-              },
-              {
-                q: "Posso cancelar a assinatura mensal a qualquer momento?",
-                a: "Sim. O cancelamento é feito diretamente na Kiwify, sem multa e sem burocracia.",
-              },
-              {
-                q: "Os planos incluem as atualizações da Reforma de 2026?",
-                a: "Sim. Toda a plataforma é atualizada conforme as regulamentações do IBS, CBS e Split Payment são publicadas.",
-              },
+              { q: "O que significa acesso vitalício?", a: "Você paga uma única vez e tem acesso permanente à plataforma, incluindo todas as atualizações futuras da Reforma Tributária." },
+              { q: "Posso cancelar a assinatura mensal a qualquer momento?", a: "Sim. O cancelamento é feito diretamente na Kiwify, sem multa e sem burocracia." },
+              { q: "Os planos incluem as atualizações da Reforma de 2026?", a: "Sim. Toda a plataforma é atualizada conforme as regulamentações do IBS, CBS e Split Payment são publicadas." },
             ].map(({ q, a }) => (
               <div key={q} className="bg-slate-900/40 border border-slate-800/50 rounded-xl p-4">
                 <p className="text-slate-200 text-sm font-semibold mb-1">{q}</p>
