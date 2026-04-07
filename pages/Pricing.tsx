@@ -72,7 +72,7 @@ const ShieldIcon = () => (
 );
 
 // ─── Componente principal ──────────────────────────────────────────────────
-export default function Pricing() {
+export function Pricing() {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
 
   const handleCTA = (url: string) => {
