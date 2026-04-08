@@ -2,12 +2,10 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { UserRole, SimulationInput, SimulationResult, NewsItem, SupplyChainInput, SupplyChainResult, AccountantGuideData } from "../types";
 
 // Initialize Gemini Client
-// Lê a chave via import.meta.env (padrão Vite) com fallbacks para compatibilidade
 const geminiApiKey =
   import.meta.env.VITE_GEMINI_API_KEY ||
   (typeof process !== 'undefined' && (process.env?.API_KEY || process.env?.GEMINI_API_KEY)) ||
   '';
-
 let ai: GoogleGenAI;
 try {
   ai = new GoogleGenAI({ apiKey: geminiApiKey });
@@ -53,6 +51,145 @@ const cleanJsonOutput = (text: string | undefined): string => {
   if (!text) return "[]";
   // Remove markdown code blocks ```json and ```
   return text.replace(/```json/g, "").replace(/```/g, "").trim();
+};
+
+// ─── Tipo para itens do cronograma dinâmico ───────────────────────────────
+export interface TimelineItem {
+  period: string;       // Ex: "Janeiro 2026", "2027", "Setembro 2026"
+  status: 'done' | 'current' | 'warning' | 'upcoming' | 'future';
+  title: string;
+  description: string;
+  urgencyTag?: string;  // Ex: "CONCLUÍDO", "AGORA", "DECISIVO", "ATENÇÃO"
+}
+
+// Cache do cronograma — 24 horas
+const timelineCache: { data: TimelineItem[] | null; timestamp: number } = {
+  data: null,
+  timestamp: 0,
+};
+const TIMELINE_CACHE_DURATION_MS = 1000 * 60 * 60 * 24; // 24 horas
+
+export const fetchReformTimeline = async (): Promise<TimelineItem[]> => {
+  const now = Date.now();
+
+  // Retorna cache se ainda válido
+  if (timelineCache.data && now - timelineCache.timestamp < TIMELINE_CACHE_DURATION_MS) {
+    return timelineCache.data;
+  }
+
+  const currentDate = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  const prompt = `
+    DATA DE HOJE: ${currentDate}
+
+    Você é um especialista em Reforma Tributária Brasileira (EC 132/2023, LC 214/2025).
+    
+    Gere um cronograma atualizado da transição tributária com base na data de hoje.
+    
+    REGRAS:
+    1. Marcos já passados devem ter status "done"
+    2. O marco atual (mês/período presente) deve ter status "current"  
+    3. Marcos urgentes nos próximos 3 meses: status "warning"
+    4. Marcos futuros importantes: status "upcoming"
+    5. Marcos distantes (2029+): status "future"
+    6. Seja preciso com as datas — não invente prazos
+    7. Inclua apenas marcos com impacto real para empresas e contadores
+    8. Máximo 6 itens para manter clareza visual
+    
+    MARCOS CONHECIDOS (valide e atualize conforme legislação mais recente):
+    - Jan/2026: Início destaque IBS/CBS nas NF-e (caráter informativo)
+    - Abr/2026: Fim da tolerância para erros nas obrigações acessórias
+    - 2027: Extinção PIS/COFINS, CBS cheia (~8,8%), IPI zerado
+    - 2027: Simples Nacional — decisão sobre regime híbrido
+    - 2029-2032: Escalonamento IBS, redução ICMS/ISS
+    - 2033: Sistema pleno — ICMS e ISS extintos
+
+    Retorne APENAS JSON válido, sem markdown.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              period:     { type: Type.STRING },
+              status:     { type: Type.STRING, enum: ['done', 'current', 'warning', 'upcoming', 'future'] },
+              title:      { type: Type.STRING },
+              description:{ type: Type.STRING },
+              urgencyTag: { type: Type.STRING },
+            },
+            required: ['period', 'status', 'title', 'description'],
+          },
+        },
+        systemInstruction: SYSTEM_INSTRUCTION_BASE,
+      },
+    });
+
+    const items = JSON.parse(cleanJsonOutput(response.text)) as TimelineItem[];
+    timelineCache.data = items;
+    timelineCache.timestamp = now;
+    return items;
+
+  } catch (error) {
+    console.warn('fetchReformTimeline error (usando fallback):', error);
+
+    // Fallback estático atualizado para abril/2026
+    const fallback: TimelineItem[] = [
+      {
+        period: 'Jan 2026',
+        status: 'done',
+        title: 'NF-e com IBS e CBS obrigatória',
+        description: 'Empresas do regime geral passaram a destacar IBS (0,1%) e CBS (0,9%) nas notas fiscais. Caráter informativo — sem recolhimento real.',
+        urgencyTag: 'CONCLUÍDO',
+      },
+      {
+        period: 'Abr 2026',
+        status: 'current',
+        title: 'Fim da tolerância para erros',
+        description: 'A Receita Federal encerrou o prazo de tolerância para erros nas obrigações acessórias. ERPs devem estar com os campos de IBS/CBS corretamente configurados.',
+        urgencyTag: 'AGORA',
+      },
+      {
+        period: 'Set 2026',
+        status: 'warning',
+        title: 'Decisão: Simples Híbrido',
+        description: 'Prazo estimado para empresas do Simples optarem pelo Regime Híbrido (pagar IBS/CBS por fora para transferir crédito integral a clientes B2B). Quem perder pode perder contratos.',
+        urgencyTag: 'DECISIVO',
+      },
+      {
+        period: '2027',
+        status: 'upcoming',
+        title: 'Extinção do PIS/COFINS',
+        description: 'CBS entra com alíquota cheia (~8,8%). PIS, COFINS e IPI extintos (exceto Zona Franca de Manaus). Cobrança efetiva de IBS e CBS começa.',
+        urgencyTag: 'CRÍTICO',
+      },
+      {
+        period: '2029–2032',
+        status: 'future',
+        title: 'Escalonamento IBS',
+        description: 'Redução progressiva do ICMS e ISS. IBS aumenta gradualmente até cobrir 100% da base estadual/municipal.',
+      },
+      {
+        period: '2033',
+        status: 'future',
+        title: 'Sistema tributário pleno',
+        description: 'Extinção total do ICMS e ISS. IVA Dual (IBS + CBS) em vigência plena. Novo modelo tributário brasileiro consolidado.',
+      },
+    ];
+
+    timelineCache.data = fallback;
+    timelineCache.timestamp = now;
+    return fallback;
+  }
 };
 
 // Simple in-memory cache for news updates to improve response time
