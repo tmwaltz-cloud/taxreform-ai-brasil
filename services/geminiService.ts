@@ -251,21 +251,6 @@ export const fetchLatestUpdates = async (role: UserRole, topic?: string): Promis
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              summary: { type: Type.STRING },
-              impactLevel: { type: Type.STRING, enum: ["Alto", "Médio", "Baixo"] },
-              date: { type: Type.STRING },
-              sourceUrl: { type: Type.STRING },
-            },
-            required: ["title", "summary", "impactLevel", "date", "sourceUrl"]
-          }
-        },
         systemInstruction: SYSTEM_INSTRUCTION_BASE + "\n" + getRoleInstruction(role)
       }
     });
