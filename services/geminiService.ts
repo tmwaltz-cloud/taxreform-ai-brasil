@@ -111,7 +111,7 @@ export const fetchReformTimeline = async (): Promise<TimelineItem[]> => {
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash-lite',
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -206,7 +206,7 @@ export const fetchLatestUpdates = async (role: UserRole, topic?: string): Promis
   }
 
   // Switched to flash-preview to reduce quota usage and improve speed.
-  const model = "gemini-1.5-flash"; 
+  const model = "gemini-2.0-flash-lite"; 
   
   // Capture the actual current date for real-time relevance
   const currentDate = new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -306,7 +306,7 @@ export const fetchLatestUpdates = async (role: UserRole, topic?: string): Promis
 };
 
 export const runTaxSimulation = async (input: SimulationInput, role: UserRole): Promise<SimulationResult> => {
-  const model = "gemini-1.5-pro";
+  const model = "gemini-2.0-flash";
 
   const prompt = `
     Realize uma simulação de impactos da Reforma Tributária (EC 132/2023).
@@ -577,7 +577,7 @@ export function simuladorEstrategicoIva(input: SupplyChainInput, futureRegime?: 
 }
 
 export const runSupplyChainAnalysis = async (input: SupplyChainInput): Promise<SupplyChainResult> => {
-  const model = "gemini-1.5-pro";
+  const model = "gemini-2.0-flash";
 
   const prompt = `
     Atue como um consultor tributário explicando para um EMPREENDEDOR LEIGO (que não entende de tributação).
@@ -732,7 +732,7 @@ export const runSupplyChainAnalysis = async (input: SupplyChainInput): Promise<S
 };
 
 export const interpretLegalText = async (text: string, role: UserRole): Promise<string> => {
-  const model = "gemini-1.5-flash";
+  const model = "gemini-2.0-flash-lite";
   
   const prompt = `
     Analise o texto legislativo: "${text}"
@@ -756,7 +756,7 @@ export const interpretLegalText = async (text: string, role: UserRole): Promise<
 };
 
 export const askTaxConsultant = async (question: string, role: UserRole): Promise<string> => {
-  const model = "gemini-1.5-flash";
+  const model = "gemini-2.0-flash-lite";
   
   const prompt = `
     PERGUNTA (${role}): "${question}"
@@ -782,7 +782,7 @@ export const askTaxConsultant = async (question: string, role: UserRole): Promis
 };
 
 export const getActionGuide = async (actionId: string, actionTitle: string): Promise<any> => {
-  const model = "gemini-1.5-flash";
+  const model = "gemini-2.0-flash-lite";
   const prompt = `
     Você é um consultor tributário especialista na Reforma Tributária Brasileira (EC 132/2023, PLP 68/2024).
     O usuário solicitou um guia passo a passo detalhado para a seguinte ação recomendada:
@@ -866,7 +866,7 @@ export const getActionGuide = async (actionId: string, actionTitle: string): Pro
 };
 
 export const getAccountantStrategicGuide = async (): Promise<AccountantGuideData> => {
-  const model = "gemini-1.5-pro";
+  const model = "gemini-2.0-flash";
   const prompt = `
     Gere guia para Contadores 2026.
     
