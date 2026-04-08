@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Activity, User, Phone, Mail, Lock, Briefcase, ArrowLeft, Loader2 } from 'lucide-react';
 import { UserRole } from '../types';
 import { supabase } from '../services/supabaseClient';
+import { getSelectedPlanUrl, clearSelectedPlan } from './Pricing';
 
 interface SignUpData {
   name: string;
@@ -25,6 +26,11 @@ export const SignUp: React.FC<SignUpProps> = ({ onNavigate, onSignUpSuccess }) =
     password: '',
     role: UserRole.EMPRESARIO,
   });
+
+  // Plano escolhido na tela anterior
+  const selectedPlanUrl = getSelectedPlanUrl();
+  const selectedPlanId = sessionStorage.getItem('selectedPlanId') || '';
+  const planLabel = selectedPlanId === 'vitalicio' ? 'Vitalício R$97' : selectedPlanId === 'mensal' ? 'Mensal R$27/mês' : '';
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, '');
@@ -63,7 +69,13 @@ export const SignUp: React.FC<SignUpProps> = ({ onNavigate, onSignUpSuccess }) =
 
       if (authError) throw authError;
 
-      // Sucesso — vai para Pricing com os dados do usuário
+      // Abre Kiwify em nova aba se houver plano selecionado
+      if (selectedPlanUrl) {
+        window.open(selectedPlanUrl, '_blank', 'noopener,noreferrer');
+        clearSelectedPlan();
+      }
+
+      // Passa dados para o App.tsx e vai para Pricing (para mostrar confirmação)
       onSignUpSuccess({
         name: formData.name,
         phone: formData.phone,
@@ -87,8 +99,8 @@ export const SignUp: React.FC<SignUpProps> = ({ onNavigate, onSignUpSuccess }) =
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <button onClick={() => onNavigate('login')} className="flex items-center text-slate-500 hover:text-brand-600 mb-6 transition">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Voltar para Login
+        <button onClick={() => onNavigate('pricing')} className="flex items-center text-slate-500 hover:text-brand-600 mb-6 transition">
+          <ArrowLeft className="w-4 h-4 mr-1" /> Voltar para Planos
         </button>
         <div className="flex justify-center">
           <div className="bg-brand-600 p-2 rounded-xl">
@@ -99,12 +111,39 @@ export const SignUp: React.FC<SignUpProps> = ({ onNavigate, onSignUpSuccess }) =
         <p className="mt-2 text-center text-sm text-slate-600">
           Comece a transformar sua gestão tributária hoje.
         </p>
+
+        {/* Indicador de etapas */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[10px]">✓</span>
+            <span className="text-emerald-600 font-medium">Plano escolhido</span>
+          </div>
+          <div className="w-8 h-px bg-slate-300" />
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="w-5 h-5 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-[10px]">2</span>
+            <span className="text-brand-600 font-medium">Criar conta</span>
+          </div>
+          <div className="w-8 h-px bg-slate-300" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <span className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center font-bold text-[10px]">3</span>
+            <span>Pagamento</span>
+          </div>
+        </div>
+
+        {/* Plano selecionado */}
+        {planLabel && (
+          <div className="mt-4 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2 text-center">
+            <p className="text-emerald-700 text-sm font-medium">
+              ✅ Plano selecionado: <span className="font-bold">{planLabel}</span>
+            </p>
+            <p className="text-emerald-600 text-xs mt-0.5">Após o cadastro você será direcionado ao pagamento</p>
+          </div>
+        )}
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow-xl shadow-slate-200 sm:rounded-lg sm:px-10 border border-slate-100">
           <form className="space-y-4" onSubmit={handleSubmit}>
-
             {/* Nome */}
             <div>
               <label className="block text-sm font-medium text-slate-700">Nome Completo</label>
@@ -181,7 +220,7 @@ export const SignUp: React.FC<SignUpProps> = ({ onNavigate, onSignUpSuccess }) =
             <div className="pt-2">
               <button type="submit" disabled={loading}
                 className="w-full flex justify-center py-3 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 transition">
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Criar Conta e Ver Planos'}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Criar Conta e Ir para Pagamento →'}
               </button>
             </div>
           </form>

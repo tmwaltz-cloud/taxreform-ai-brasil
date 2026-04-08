@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { UserRole, AuthView } from "../types";
 
-// ─── Props compatíveis com App.tsx ─────────────────────────────────────────
 interface PricingProps {
   onNavigate: (view: AuthView) => void;
   userData?: { name: string; phone: string; email: string; role: UserRole } | null;
 }
 
-// ─── Configuração dos planos ───────────────────────────────────────────────
 const PLANS = [
   {
     id: "mensal",
@@ -29,10 +27,7 @@ const PLANS = [
       "Atualizações mensais da Reforma",
       "Cancele quando quiser",
     ],
-    missing: [
-      "Acesso vitalício garantido",
-      "Sem renovação obrigatória",
-    ],
+    missing: ["Acesso vitalício garantido", "Sem renovação obrigatória"],
   },
   {
     id: "vitalicio",
@@ -59,6 +54,10 @@ const PLANS = [
   },
 ];
 
+// Salva o plano escolhido para uso após o cadastro
+export const getSelectedPlanUrl = () => sessionStorage.getItem('selectedPlanUrl') || '';
+export const clearSelectedPlan = () => sessionStorage.removeItem('selectedPlanUrl');
+
 const CheckIcon = () => (
   <svg className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -82,11 +81,15 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
   const hasAccount = !!userData?.email;
   const savings = 27 * 12 - 97;
 
-  const handleCTA = (url: string) => {
+  const handleCTA = (planId: string, kiwifyUrl: string) => {
     if (hasAccount) {
-      onNavigate('login');
+      // Já tem cadastro → vai direto para Kiwify
+      window.open(kiwifyUrl, "_blank", "noopener,noreferrer");
     } else {
-      window.open(url, "_blank", "noopener,noreferrer");
+      // Sem cadastro → salva o plano e vai para cadastro
+      sessionStorage.setItem('selectedPlanUrl', kiwifyUrl);
+      sessionStorage.setItem('selectedPlanId', planId);
+      onNavigate('signup');
     }
   };
 
@@ -116,6 +119,26 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
             💡 Vitalício economiza R${savings} vs 12 meses de assinatura
           </span>
         </div>
+
+        {/* Indicador de etapas para novos usuários */}
+        {!hasAccount && (
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[10px]">1</span>
+              <span className="text-emerald-400 font-medium">Escolha o plano</span>
+            </div>
+            <div className="w-8 h-px bg-slate-700" />
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <span className="w-5 h-5 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center font-bold text-[10px]">2</span>
+              <span>Crie sua conta</span>
+            </div>
+            <div className="w-8 h-px bg-slate-700" />
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <span className="w-5 h-5 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center font-bold text-[10px]">3</span>
+              <span>Pagamento</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 flex items-start justify-center px-4 pb-16">
@@ -175,14 +198,14 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
                   ))}
                 </ul>
                 <button
-                  onClick={() => handleCTA(plan.kiwifyUrl)}
+                  onClick={() => handleCTA(plan.id, plan.kiwifyUrl)}
                   className={`w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 ${
                     plan.highlight
                       ? "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-[0_4px_20px_rgba(52,211,153,0.35)] hover:shadow-[0_4px_28px_rgba(52,211,153,0.5)] hover:-translate-y-0.5"
                       : "bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600/50"
                   }`}
                 >
-                  {hasAccount ? "Acessar Plataforma" : plan.cta}
+                  {hasAccount ? `Ir para pagamento` : plan.cta}
                 </button>
               </div>
             </div>
@@ -191,10 +214,8 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
       </div>
 
       <div className="text-center pb-6">
-        <button
-          onClick={() => onNavigate('login')}
-          className="text-slate-500 hover:text-slate-300 text-sm underline transition"
-        >
+        <button onClick={() => onNavigate('login')}
+          className="text-slate-500 hover:text-slate-300 text-sm underline transition">
           Já tenho acesso — fazer login
         </button>
       </div>
