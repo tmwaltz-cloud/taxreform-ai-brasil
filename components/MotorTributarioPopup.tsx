@@ -75,7 +75,7 @@ export function MotorTributarioPopup({ userPhone, onClose, autoShowAfterMs = 180
 
         {/* Badge */}
         <div className="absolute top-4 left-1/2 -translate-x-1/2">
-          <span className="text-[10px] font-bold tracking-[0.2em] uppercase px-3 py-1 rounded-full"
+          <span className="text-[10px] font-bold tracking-[0.15em] uppercase px-3 py-1 rounded-full whitespace-nowrap"
             style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b' }}>
             ⚡ Apenas para os primeiros
           </span>
