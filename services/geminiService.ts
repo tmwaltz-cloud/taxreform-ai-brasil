@@ -50,6 +50,30 @@ const cleanJsonOutput = (text: string | undefined): string => {
   return text.replace(/```json/g, "").replace(/```/g, "").trim();
 };
 
+// ─── Retry automático para erros 503 (alta demanda) ───────────────────────
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, baseDelay = 2000): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      const isUnavailable = error?.message?.includes('503') || 
+                            error?.message?.includes('UNAVAILABLE') ||
+                            error?.message?.includes('high demand') ||
+                            error?.status === 503;
+      if (isUnavailable && attempt < maxRetries) {
+        const delay = baseDelay * attempt; // 2s, 4s, 6s
+        console.warn(`Gemini 503 — tentativa ${attempt}/${maxRetries}. Aguardando ${delay}ms...`);
+        await sleep(delay);
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error('Max retries reached');
+}
+
 // ─── Timeline dinâmico ────────────────────────────────────────────────────
 export interface TimelineItem {
   period: string;
@@ -86,14 +110,13 @@ export const fetchReformTimeline = async (): Promise<TimelineItem[]> => {
   `;
 
   try {
-    // ⚠️ googleSearch NÃO é compatível com responseMimeType — usar só systemInstruction
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION_BASE,
       },
-    });
+    }));
 
     const items = JSON.parse(cleanJsonOutput(response.text)) as TimelineItem[];
     timelineCache.data = items;
@@ -143,14 +166,14 @@ export const fetchLatestUpdates = async (role: UserRole, topic?: string): Promis
 
   try {
     // ⚠️ googleSearch NÃO é compatível com responseMimeType
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: model,
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
         systemInstruction: SYSTEM_INSTRUCTION_BASE + "\n" + getRoleInstruction(role)
       }
-    });
+    }));
 
     const jsonText = cleanJsonOutput(response.text);
     const items = JSON.parse(jsonText) as NewsItem[];
@@ -351,14 +374,14 @@ export const askTaxConsultant = async (question: string, role: UserRole): Promis
   const prompt = `PERGUNTA (${role}): "${question}" Responda como JaxAI (Consultor Tributário). Use Markdown.`;
   try {
     // ⚠️ googleSearch NÃO é compatível com responseMimeType — OK aqui pois não usamos responseMimeType
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: model,
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
         systemInstruction: SYSTEM_INSTRUCTION_BASE + "\n" + getRoleInstruction(role),
       }
-    });
+    }));
     return response.text || "Sem resposta.";
   } catch (error) {
     console.error("Consultant error", error);
