@@ -51,16 +51,21 @@ const cleanJsonOutput = (text: string | undefined): string => {
 };
 
 // ─── Rate Limiter por usuário (localStorage) ──────────────────────────────
-// Limites diários por tipo de consulta
+// Limites diários por plano:
+// Freemium : consultant=3,  supplyChain=0, interpreter=0, actionGuide=0, accountant=0
+// Mensal   : consultant=15, supplyChain=5, interpreter=10, actionGuide=10, accountant=3
+// Vitalício: consultant=20, supplyChain=10, interpreter=15, actionGuide=15, accountant=5
+// Os limites abaixo refletem o plano Mensal como padrão.
+// Quando o Supabase Auth estiver completo, os limites serão lidos do perfil do usuário.
 const RATE_LIMITS = {
-  consultant: 20,    // JaxAI — 20 perguntas/dia
-  simulation: 10,    // Simulações — 10/dia
-  supplyChain: 10,   // Cadeia de valor — 10/dia
-  interpreter: 15,   // Intérprete legal — 15/dia
-  news: 30,          // Notícias (tem cache 15min, raramente bate) — 30/dia
-  timeline: 5,       // Cronograma (tem cache 24h) — 5/dia
-  actionGuide: 15,   // Guias de ação — 15/dia
-  accountant: 5,     // Guia contador (pesado) — 5/dia
+  consultant:   15,   // JaxAI — Freemium:3 | Mensal:15 | Vitalício:20
+  simulation:   0,    // Simulação tributária — removida dos planos (Motor 5.0)
+  supplyChain:  5,    // Cadeia de Valor — Freemium:0 | Mensal:5 | Vitalício:10
+  interpreter:  10,   // Intérprete Legislativo — Freemium:0 | Mensal:10 | Vitalício:15
+  news:         30,   // Notícias (cache 15min — raramente bate o limite)
+  timeline:     5,    // Cronograma (cache 24h — raramente bate o limite)
+  actionGuide:  10,   // Guias de Ação — Freemium:0 | Mensal:10 | Vitalício:15
+  accountant:   3,    // Guia Contador 4.0 — Freemium:0 | Mensal:3 | Vitalício:5
 };
 
 type RateLimitKey = keyof typeof RATE_LIMITS;
