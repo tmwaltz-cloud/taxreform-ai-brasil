@@ -6,28 +6,56 @@ interface PricingProps {
   userData?: { name: string; phone: string; email: string; role: UserRole } | null;
 }
 
+// ─── Configuração dos planos ───────────────────────────────────────────────
 const PLANS = [
   {
+    id: "free",
+    name: "Freemium",
+    badge: null,
+    price: 0,
+    period: "",
+    priceLabel: "Gratuito",
+    description: "Teste por 7 dias. Sem cartão. Sem compromisso.",
+    cta: "Começar Grátis",
+    kiwifyUrl: null, // sem pagamento
+    highlight: false,
+    tag: "7 dias grátis",
+    features: [
+      "Notícias tributárias em tempo real",
+      "Cronograma dinâmico da Reforma",
+      "JaxAI — 3 perguntas por dia",
+      "Dashboard de Inteligência",
+    ],
+    missing: [
+      "Cadeia de Valor fiscal",
+      "Guia do Contador 4.0",
+      "Guias de Ação Práticos",
+      "Intérprete Legislativo",
+    ],
+  },
+  {
     id: "mensal",
-    name: "Assinatura",
+    name: "Mensal",
     badge: null,
     price: 27,
     period: "/mês",
-    description: "Ideal para quem quer começar sem compromisso.",
+    priceLabel: null,
+    description: "Acesso completo. Cancele quando quiser.",
     cta: "Assinar Agora",
     kiwifyUrl: "https://pay.kiwify.com.br/DM37j2q",
     highlight: false,
+    tag: null,
     features: [
-      "Acesso ao Dashboard de Inteligência",
-      "JaxAI — Consultor IA (Gemini)",
-      "Intérprete Legislativo",
-      "Simulador Cadeia de Valor",
-      "Guia do Contador 4.0",
-      "Guia de Ações Práticas",
-      "Atualizações mensais da Reforma",
+      "Tudo do Freemium",
+      "JaxAI — 15 perguntas por dia",
+      "Cadeia de Valor — 5 análises/dia",
+      "Guia do Contador 4.0 completo",
+      "Guias de Ação — 10/dia",
+      "Intérprete Legislativo — 10/dia",
+      "Atualizações contínuas da Reforma",
       "Cancele quando quiser",
     ],
-    missing: ["Acesso vitalício garantido", "Sem renovação obrigatória"],
+    missing: ["Acesso vitalício garantido"],
   },
   {
     id: "vitalicio",
@@ -35,18 +63,21 @@ const PLANS = [
     badge: "Melhor Custo-Benefício",
     price: 97,
     period: " único",
+    priceLabel: null,
     description: "Pague uma vez. Use para sempre. Sem surpresas.",
     cta: "Garantir Acesso Vitalício",
     kiwifyUrl: "https://pay.kiwify.com.br/myXjxAN",
     highlight: true,
+    tag: null,
     features: [
-      "Acesso ao Dashboard de Inteligência",
-      "JaxAI — Consultor IA (Gemini)",
-      "Intérprete Legislativo",
-      "Simulador Cadeia de Valor",
-      "Guia do Contador 4.0",
-      "Guia de Ações Práticas",
-      "Atualizações mensais da Reforma",
+      "Tudo do Mensal",
+      "JaxAI — 20 perguntas por dia",
+      "Cadeia de Valor — 10 análises/dia",
+      "Guia do Contador 4.0 completo",
+      "Guias de Ação — 15/dia",
+      "Intérprete Legislativo — 15/dia",
+      "Todas as atualizações futuras",
+      "Acesso prioritário a novos módulos",
       "Acesso vitalício garantido",
       "Sem renovação obrigatória",
     ],
@@ -54,10 +85,10 @@ const PLANS = [
   },
 ];
 
-// Salva o plano escolhido para uso após o cadastro
 export const getSelectedPlanUrl = () => sessionStorage.getItem('selectedPlanUrl') || '';
 export const clearSelectedPlan = () => sessionStorage.removeItem('selectedPlanUrl');
 
+// ─── Ícones ────────────────────────────────────────────────────────────────
 const CheckIcon = () => (
   <svg className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -76,25 +107,50 @@ const ShieldIcon = () => (
   </svg>
 );
 
+// ─── Componente principal ──────────────────────────────────────────────────
 export function Pricing({ onNavigate, userData }: PricingProps) {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
   const hasAccount = !!userData?.email;
   const savings = 27 * 12 - 97;
 
-  const handleCTA = (planId: string, kiwifyUrl: string) => {
+  const handleCTA = (planId: string, kiwifyUrl: string | null) => {
+    if (planId === 'free') {
+      // Freemium → cadastro direto, sem pagamento
+      if (hasAccount) {
+        onNavigate('login');
+      } else {
+        sessionStorage.setItem('selectedPlanUrl', '');
+        sessionStorage.setItem('selectedPlanId', 'free');
+        onNavigate('signup');
+      }
+      return;
+    }
+
     if (hasAccount) {
-      // Já tem cadastro → vai direto para Kiwify
-      window.open(kiwifyUrl, "_blank", "noopener,noreferrer");
+      // Já tem conta → vai direto para Kiwify
+      window.open(kiwifyUrl!, "_blank", "noopener,noreferrer");
     } else {
-      // Sem cadastro → salva o plano e vai para cadastro
-      sessionStorage.setItem('selectedPlanUrl', kiwifyUrl);
+      // Sem conta → salva plano e vai para cadastro
+      sessionStorage.setItem('selectedPlanUrl', kiwifyUrl!);
       sessionStorage.setItem('selectedPlanId', planId);
       onNavigate('signup');
     }
   };
 
+  const getButtonStyle = (plan: typeof PLANS[0]) => {
+    if (plan.highlight) {
+      return "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-[0_4px_20px_rgba(52,211,153,0.35)] hover:shadow-[0_4px_28px_rgba(52,211,153,0.5)] hover:-translate-y-0.5";
+    }
+    if (plan.id === 'free') {
+      return "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/50";
+    }
+    return "bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600/50";
+  };
+
   return (
     <div className="min-h-screen bg-[#0B1120] text-white flex flex-col">
+
+      {/* ── Header ── */}
       <div className="pt-16 pb-10 px-4 text-center">
         <p className="text-xs font-semibold tracking-[0.25em] text-emerald-400 uppercase mb-3">
           Planos TaxReform.ai Brasil
@@ -111,8 +167,8 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
           </span>
         </h1>
         <p className="text-slate-400 text-base max-w-md mx-auto leading-relaxed">
-          Acesso à inteligência tributária que os grandes escritórios já usam —
-          agora disponível para consultores e contadores independentes.
+          Da inteligência tributária gratuita ao acesso vitalício completo —
+          para consultores, contadores e empresários.
         </p>
         <div className="inline-flex items-center gap-2 mt-5 bg-amber-500/10 border border-amber-500/30 rounded-full px-4 py-1.5">
           <span className="text-amber-400 text-xs font-semibold">
@@ -120,29 +176,25 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
           </span>
         </div>
 
-        {/* Indicador de etapas para novos usuários */}
+        {/* Indicador de etapas */}
         {!hasAccount && (
           <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[10px]">1</span>
-              <span className="text-emerald-400 font-medium">Escolha o plano</span>
-            </div>
-            <div className="w-8 h-px bg-slate-700" />
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <span className="w-5 h-5 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center font-bold text-[10px]">2</span>
-              <span>Crie sua conta</span>
-            </div>
-            <div className="w-8 h-px bg-slate-700" />
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <span className="w-5 h-5 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center font-bold text-[10px]">3</span>
-              <span>Pagamento</span>
-            </div>
+            {['Escolha o plano', 'Crie sua conta', 'Pagamento'].map((step, i) => (
+              <div key={step} className="flex items-center gap-1.5">
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${i === 0 ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                  {i + 1}
+                </span>
+                <span className={`text-xs ${i === 0 ? 'text-emerald-400 font-medium' : 'text-slate-500'}`}>{step}</span>
+                {i < 2 && <div className="w-6 h-px bg-slate-700 ml-1" />}
+              </div>
+            ))}
           </div>
         )}
       </div>
 
+      {/* ── Cards ── */}
       <div className="flex-1 flex items-start justify-center px-4 pb-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-4xl">
           {PLANS.map((plan) => (
             <div
               key={plan.id}
@@ -154,6 +206,7 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
                   : "border-slate-700/50 bg-slate-900/40"
               } ${hoveredPlan === plan.id ? "scale-[1.02] shadow-xl" : ""}`}
             >
+              {/* Badge destaque */}
               {plan.badge && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                   <span className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-[11px] font-bold tracking-wide px-4 py-1 rounded-full shadow-lg whitespace-nowrap">
@@ -161,21 +214,45 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
                   </span>
                 </div>
               )}
-              <div className="p-7 flex flex-col flex-1">
-                <div className="mb-5">
+
+              {/* Tag freemium */}
+              {plan.tag && (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                  <span className="bg-slate-700 text-slate-300 text-[11px] font-bold tracking-wide px-4 py-1 rounded-full border border-slate-600 whitespace-nowrap">
+                    🎁 {plan.tag}
+                  </span>
+                </div>
+              )}
+
+              <div className="p-6 flex flex-col flex-1">
+                {/* Nome e descrição */}
+                <div className="mb-4">
                   <h2 className={`text-lg font-bold mb-1 ${plan.highlight ? "text-emerald-300" : "text-slate-200"}`}>
                     {plan.name}
                   </h2>
-                  <p className="text-slate-500 text-sm leading-snug">{plan.description}</p>
+                  <p className="text-slate-500 text-xs leading-snug">{plan.description}</p>
                 </div>
-                <div className="mb-6">
-                  <div className="flex items-end gap-1">
-                    <span className="text-slate-400 text-sm font-medium">R$</span>
-                    <span className={`text-5xl font-black leading-none ${plan.highlight ? "text-white" : "text-slate-100"}`}>
-                      {plan.price}
-                    </span>
-                    <span className="text-slate-500 text-sm mb-1">{plan.period}</span>
-                  </div>
+
+                {/* Preço */}
+                <div className="mb-5">
+                  {plan.priceLabel ? (
+                    <div className="flex items-end gap-1">
+                      <span className={`text-4xl font-black leading-none ${plan.highlight ? "text-white" : "text-slate-100"}`}>
+                        {plan.priceLabel}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-end gap-1">
+                      <span className="text-slate-400 text-sm font-medium">R$</span>
+                      <span className={`text-4xl font-black leading-none ${plan.highlight ? "text-white" : "text-slate-100"}`}>
+                        {plan.price}
+                      </span>
+                      <span className="text-slate-500 text-sm mb-1">{plan.period}</span>
+                    </div>
+                  )}
+                  {plan.id === "free" && (
+                    <p className="text-slate-600 text-xs mt-1">após 7 dias, escolha um plano pago</p>
+                  )}
                   {plan.id === "mensal" && (
                     <p className="text-slate-600 text-xs mt-1">cobrado mensalmente · cancele quando quiser</p>
                   )}
@@ -183,29 +260,29 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
                     <p className="text-emerald-600 text-xs mt-1 font-medium">pagamento único · acesso para sempre</p>
                   )}
                 </div>
-                <ul className="space-y-2.5 mb-7 flex-1">
+
+                {/* Features */}
+                <ul className="space-y-2 mb-6 flex-1">
                   {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
+                    <li key={f} className="flex items-start gap-2 text-xs text-slate-300">
                       <CheckIcon />
                       <span>{f}</span>
                     </li>
                   ))}
                   {plan.missing.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-sm text-slate-600 line-through">
+                    <li key={f} className="flex items-start gap-2 text-xs text-slate-600 line-through">
                       <XIcon />
                       <span>{f}</span>
                     </li>
                   ))}
                 </ul>
+
+                {/* CTA */}
                 <button
                   onClick={() => handleCTA(plan.id, plan.kiwifyUrl)}
-                  className={`w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 ${
-                    plan.highlight
-                      ? "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-[0_4px_20px_rgba(52,211,153,0.35)] hover:shadow-[0_4px_28px_rgba(52,211,153,0.5)] hover:-translate-y-0.5"
-                      : "bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600/50"
-                  }`}
+                  className={`w-full py-3 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 ${getButtonStyle(plan)}`}
                 >
-                  {hasAccount ? `Ir para pagamento` : plan.cta}
+                  {hasAccount && plan.id !== 'free' ? 'Ir para pagamento' : plan.cta}
                 </button>
               </div>
             </div>
@@ -213,6 +290,31 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
         </div>
       </div>
 
+      {/* ── Comparativo rápido ── */}
+      <div className="px-4 pb-12">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-slate-900/40 border border-slate-800/50 rounded-2xl p-6">
+            <h3 className="text-center text-slate-300 text-sm font-semibold mb-5">
+              Por que ir além do Freemium?
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+              {[
+                { icon: '🤖', title: 'JaxAI ilimitado', desc: 'Consultas tributárias sem restrição diária nos planos pagos' },
+                { icon: '🔗', title: 'Cadeia de Valor', desc: 'Analise o impacto fiscal fornecedor → sua empresa → cliente' },
+                { icon: '📋', title: 'Guias práticos', desc: 'Contador 4.0 + Guias de Ação + Intérprete Legislativo completos' },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} className="p-4 rounded-xl bg-slate-800/30">
+                  <div className="text-2xl mb-2">{icon}</div>
+                  <p className="text-slate-200 text-sm font-semibold mb-1">{title}</p>
+                  <p className="text-slate-500 text-xs leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Login e Garantia ── */}
       <div className="text-center pb-6">
         <button onClick={() => onNavigate('login')}
           className="text-slate-500 hover:text-slate-300 text-sm underline transition">
@@ -232,6 +334,7 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
         </div>
       </div>
 
+      {/* ── FAQ ── */}
       <div className="pb-16 px-4 border-t border-slate-800/50">
         <div className="max-w-xl mx-auto pt-10">
           <h3 className="text-center text-slate-400 text-sm font-semibold uppercase tracking-widest mb-6">
@@ -239,6 +342,7 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
           </h3>
           <div className="space-y-4">
             {[
+              { q: "O Freemium expira?", a: "Sim. Após 7 dias você continua com acesso limitado (notícias + cronograma + 3 perguntas/dia ao JaxAI). Para acesso completo, escolha o plano Mensal ou Vitalício." },
               { q: "O que significa acesso vitalício?", a: "Você paga uma única vez e tem acesso permanente à plataforma, incluindo todas as atualizações futuras da Reforma Tributária." },
               { q: "Posso cancelar a assinatura mensal a qualquer momento?", a: "Sim. O cancelamento é feito diretamente na Kiwify, sem multa e sem burocracia." },
               { q: "Os planos incluem as atualizações da Reforma de 2026?", a: "Sim. Toda a plataforma é atualizada conforme as regulamentações do IBS, CBS e Split Payment são publicadas." },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, Clock, FileText, TrendingUp, AlertTriangle, ArrowRight, X, ShieldCheck, PieChart, ArrowLeft } from 'lucide-react';
+import { CheckCircle, ArrowRight, ArrowLeft, Shield, Zap, Users, TrendingUp, Clock, Star, ChevronDown } from 'lucide-react';
 
 interface SalesPageProps {
   onBack: () => void;
@@ -7,288 +7,427 @@ interface SalesPageProps {
 }
 
 export const SalesPage: React.FC<SalesPageProps> = ({ onBack, onBuy }) => {
-  const handleWhatsAppClick = () => {
-    const text = `Olá! Tenho interesse no Diagnóstico Estratégico da Reforma Tributária. Gostaria de saber mais sobre a contratação.`;
+
+  const handleWhatsApp = (msg?: string) => {
+    const text = msg || `Olá, Rogério! Quero saber mais sobre o TaxReform.ai Brasil e como ele pode ajudar minha empresa na Reforma Tributária.`;
     window.open(`https://wa.me/5515996648895?text=${encodeURIComponent(text)}`, '_blank');
   };
 
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-y-auto">
-      {/* Header / Nav */}
-      <div className="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-md">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <button onClick={onBack} className="flex items-center text-slate-300 hover:text-white transition">
-            <ArrowLeft className="w-5 h-5 mr-2" /> Voltar
-          </button>
-          <span className="font-bold text-lg tracking-tight">TaxReform<span className="text-brand-500">.ai Brasil</span></span>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#0B1120] text-white font-sans overflow-y-auto">
 
-      {/* Hero Section */}
-      <section className="bg-slate-900 text-white py-16 px-4 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-brand-900/20 rounded-l-full pointer-events-none"></div>
-        <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="inline-block bg-brand-600/20 border border-brand-500/50 rounded-full px-4 py-1 mb-6">
-            <span className="text-brand-300 font-semibold text-sm uppercase tracking-wider">Oferta Exclusiva de Lançamento</span>
-          </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight">
-            Para um desafio estratégico,<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-cyan-300">uma solução estratégica.</span>
-          </h1>
-          <p className="text-xl text-slate-300 max-w-3xl mx-auto mb-8 leading-relaxed">
-            Quanto vale não perder <strong>30% do mercado</strong> para um concorrente que se preparou?
-            Esta não é uma questão de <em>compliance</em> que seu contador resolve. É uma reestruturação do seu modelo de negócio.
-          </p>
-          <button 
-            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-            className="bg-brand-600 hover:bg-brand-500 text-white text-lg font-bold py-4 px-10 rounded-xl shadow-lg shadow-brand-900/50 transform hover:-translate-y-1 transition-all flex items-center mx-auto"
+      {/* ── Nav ── */}
+      <nav className="sticky top-0 z-50 bg-[#0B1120]/95 backdrop-blur border-b border-slate-800/50">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <button onClick={onBack} className="flex items-center text-slate-400 hover:text-white transition text-sm">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
+          </button>
+          <span className="font-bold text-lg">TaxReform<span className="text-emerald-400">.ai Brasil</span></span>
+          <button
+            onClick={() => scrollTo('planos')}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
           >
-            Quero Blindar Minha Empresa <ArrowRight className="ml-2 w-6 h-6" />
+            Ver planos
+          </button>
+        </div>
+      </nav>
+
+      {/* ── Hero ── */}
+      <section className="relative overflow-hidden pt-20 pb-24 px-4">
+        {/* Fundo decorativo */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-emerald-900/20 rounded-full blur-3xl" />
+        </div>
+
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <div className="inline-flex items-center gap-2 bg-emerald-900/40 border border-emerald-700/50 rounded-full px-4 py-1.5 mb-6">
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+            <span className="text-emerald-300 text-xs font-semibold uppercase tracking-wider">
+              Lançamento — Acesso limitado
+            </span>
+          </div>
+
+          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-6">
+            A Reforma Tributária<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+              já começou. Você está<br />pronto?
+            </span>
+          </h1>
+
+          <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mb-4 leading-relaxed">
+            O TaxReform.ai Brasil é a plataforma de inteligência tributária que traduz a maior reforma fiscal dos últimos 50 anos em <strong className="text-white">ações práticas para o seu negócio</strong>.
+          </p>
+          <p className="text-slate-400 text-base max-w-xl mx-auto mb-10">
+            Para contadores que querem liderar a transição. Para empresários que não podem perder competitividade.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              onClick={() => scrollTo('planos')}
+              className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-bold py-4 px-8 rounded-xl shadow-[0_4px_30px_rgba(52,211,153,0.4)] transition-all hover:-translate-y-0.5 text-base"
+            >
+              Começar agora — 7 dias grátis <ArrowRight className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => handleWhatsApp()}
+              className="flex items-center gap-2 border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white font-semibold py-4 px-8 rounded-xl transition text-base"
+            >
+              Falar com especialista
+            </button>
+          </div>
+
+          <p className="text-slate-600 text-xs mt-4">Sem cartão de crédito · Cancele quando quiser</p>
+        </div>
+
+        <div className="flex justify-center mt-12">
+          <button onClick={() => scrollTo('publicos')} className="text-slate-600 hover:text-slate-400 transition animate-bounce">
+            <ChevronDown className="w-6 h-6" />
           </button>
         </div>
       </section>
 
-      {/* The Problem: Traditional vs Strategic */}
-      <section className="py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">Por que seu contador atual não é suficiente?</h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              A Reforma Tributária não é apenas sobre mudar alíquotas. É sobre competitividade, precificação e sobrevivência.
-            </p>
-          </div>
+      {/* ── Números ── */}
+      <section className="border-y border-slate-800/50 py-10 px-4 bg-slate-900/30">
+        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          {[
+            { value: 'Set/2026', label: 'Prazo decisão Simples Híbrido' },
+            { value: '2027', label: 'Extinção do PIS/COFINS' },
+            { value: '28,5%', label: 'Alíquota consolidada IVA' },
+            { value: '2033', label: 'Sistema pleno IBS + CBS' },
+          ].map(({ value, label }) => (
+            <div key={label}>
+              <p className="text-2xl md:text-3xl font-extrabold text-emerald-400 mb-1">{value}</p>
+              <p className="text-slate-500 text-xs leading-tight">{label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-            {/* Old Way */}
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-red-200 transition">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
-                <FileText className="w-32 h-32 text-slate-800" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-700 mb-4 flex items-center">
-                <X className="w-6 h-6 text-red-500 mr-2" /> O Contador Tradicional
-              </h3>
-              <ul className="space-y-4">
-                <li className="flex items-start text-slate-600">
-                  <span className="mr-3 mt-1 text-slate-400">•</span>
-                  Olha para o <strong>passado</strong> (retroativo).
-                </li>
-                <li className="flex items-start text-slate-600">
-                  <span className="mr-3 mt-1 text-slate-400">•</span>
-                  Foco em <strong>apuração e guias</strong> (compliance).
-                </li>
-                <li className="flex items-start text-slate-600">
-                  <span className="mr-3 mt-1 text-slate-400">•</span>
-                  Garante apenas que você pague os impostos (muitas vezes a maior).
-                </li>
+      {/* ── Para quem é ── */}
+      <section id="publicos" className="py-20 px-4">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3">Para quem é o TaxReform.ai Brasil?</h2>
+          <p className="text-slate-400 text-center mb-12 max-w-xl mx-auto">Dois públicos. Uma plataforma. O mesmo objetivo: dominar a Reforma antes dos concorrentes.</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Contador */}
+            <div className="rounded-2xl p-8 border border-emerald-800/40 bg-gradient-to-b from-emerald-950/40 to-slate-900/40">
+              <div className="w-12 h-12 bg-emerald-900/60 rounded-xl flex items-center justify-center text-2xl mb-5">🧮</div>
+              <h3 className="text-xl font-bold text-emerald-300 mb-3">Para Contadores e Escritórios</h3>
+              <p className="text-slate-400 text-sm mb-5 leading-relaxed">
+                A Reforma muda o papel do contador. Quem continuar só apurando impostos vai perder clientes para quem oferece estratégia.
+              </p>
+              <ul className="space-y-2.5">
+                {[
+                  'Interprete textos legislativos em segundos',
+                  'Entregue diagnósticos tributários completos',
+                  'Oriente clientes sobre Simples Híbrido',
+                  'Seja o consultor estratégico que eles precisam',
+                  'Guia do Contador 4.0 — visão completa da transição',
+                ].map(f => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
+                    <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>{f}</span>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            {/* New Way */}
-            <div className="bg-slate-900 text-white p-8 rounded-2xl shadow-xl relative overflow-hidden transform md:-translate-y-4 border border-brand-500/30">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <TrendingUp className="w-32 h-32 text-brand-400" />
-              </div>
-              <h3 className="text-xl font-bold text-brand-400 mb-4 flex items-center">
-                <CheckCircle className="w-6 h-6 text-brand-500 mr-2" /> Nós, Como Estrategistas Fiscais
-              </h3>
-              <ul className="space-y-4">
-                <li className="flex items-start text-slate-300">
-                  <CheckCircle className="w-5 h-5 text-brand-500 mr-3 mt-0.5 flex-shrink-0" />
-                  Olhamos para o <strong>futuro</strong> (projeção 2026-2033).
-                </li>
-                <li className="flex items-start text-slate-300">
-                  <CheckCircle className="w-5 h-5 text-brand-500 mr-3 mt-0.5 flex-shrink-0" />
-                  Foco em <strong>modelo de negócio, precificação e lucro</strong>.
-                </li>
-                <li className="flex items-start text-slate-300">
-                  <CheckCircle className="w-5 h-5 text-brand-500 mr-3 mt-0.5 flex-shrink-0" />
-                  Usamos a reforma como ferramenta de <strong>vantagem competitiva</strong>.
-                </li>
+            {/* Empresário */}
+            <div className="rounded-2xl p-8 border border-cyan-800/40 bg-gradient-to-b from-cyan-950/40 to-slate-900/40">
+              <div className="w-12 h-12 bg-cyan-900/60 rounded-xl flex items-center justify-center text-2xl mb-5">🏢</div>
+              <h3 className="text-xl font-bold text-cyan-300 mb-3">Para Empresários e Gestores</h3>
+              <p className="text-slate-400 text-sm mb-5 leading-relaxed">
+                A Reforma vai mudar sua precificação, seu fluxo de caixa e sua competitividade. Quem se preparar agora sai na frente.
+              </p>
+              <ul className="space-y-2.5">
+                {[
+                  'Simule o impacto na sua cadeia de valor',
+                  'Entenda o Split Payment no seu caixa',
+                  'Saiba quando e como ajustar seus preços',
+                  'Compare regimes: Simples x Híbrido x Presumido',
+                  'JaxAI responde suas dúvidas em linguagem simples',
+                ].map(f => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
+                    <CheckCircle className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <span>{f}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Scope of Analysis */}
-      <section className="py-20 bg-white border-y border-slate-200">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">O que entregamos?</h2>
-            <p className="text-lg text-slate-600">Uma simulação de impactos completa e personalizada para sua empresa.</p>
-          </div>
+      {/* ── Ferramentas ── */}
+      <section className="py-20 px-4 bg-slate-900/30 border-y border-slate-800/50">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3">O que está dentro da plataforma?</h2>
+          <p className="text-slate-400 text-center mb-12">5 ferramentas de inteligência tributária integradas.</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
-              { title: "Análise da Carga Tributária", desc: "Diagnóstico claro do aumento ou redução de impostos no seu CNAE.", icon: PieChart },
-              { title: "Impacto em Preços e Custos", desc: "Análise item a item para ajustar preços e renegociar com fornecedores.", icon: FileText },
-              { title: "Projeções Individualizadas", desc: "Simulações por produto e serviço para decisões precisas.", icon: TrendingUp },
-              { title: "Janelas de Transição", desc: "Mapeamento financeiro das janelas de reprecificação (2027-2033).", icon: Clock },
-              { title: "Análise da Cadeia de Valor", desc: "Identificação de elos frágeis em fornecedores e clientes (risco de crédito).", icon: AlertTriangle },
-              { title: "Maximização de Créditos", desc: "Levantamento de oportunidades ocultas para recuperar impostos.", icon: ShieldCheck }
-            ].map((item, idx) => (
-              <div key={idx} className="flex flex-col items-start p-6 rounded-xl bg-slate-50 border border-slate-100 hover:shadow-md transition">
-                <div className="bg-brand-100 p-3 rounded-lg mb-4">
-                  <item.icon className="w-6 h-6 text-brand-600" />
+              {
+                icon: '🤖',
+                title: 'JaxAI — Consultor IA',
+                desc: 'Pergunte qualquer coisa sobre a Reforma. JaxAI responde com base na LC 214/2025 e dados em tempo real do Google.',
+                tag: 'Powered by Gemini',
+              },
+              {
+                icon: '📡',
+                title: 'Radar de Inteligência',
+                desc: 'Notícias tributárias filtradas por impacto. Saiba o que aconteceu hoje no Congresso, na Receita Federal e no CGIBS.',
+                tag: 'Tempo real',
+              },
+              {
+                icon: '🔗',
+                title: 'Simulador Cadeia de Valor',
+                desc: 'Analise o impacto fiscal em cada elo: fornecedor → sua empresa → cliente. Veja quem gera crédito e quem perde.',
+                tag: 'IVA Dual',
+              },
+              {
+                icon: '📋',
+                title: 'Guia do Contador 4.0',
+                desc: 'Roteiro completo para contadores navegarem a transição: do operacional ao estratégico.',
+                tag: 'Para contadores',
+              },
+              {
+                icon: '⚡',
+                title: 'Guias de Ação Práticos',
+                desc: 'Passo a passo para as principais ações: revisar NCMs, simular regimes, preparar o ERP, renegociar contratos.',
+                tag: 'Action plan',
+              },
+              {
+                icon: '⚖️',
+                title: 'Intérprete Legislativo',
+                desc: 'Cole qualquer artigo da EC 132, LC 214/2025 ou PLP 68/2024 e receba uma análise em linguagem de negócios.',
+                tag: 'EC 132/2023',
+              },
+            ].map(({ icon, title, desc, tag }) => (
+              <div key={title} className="bg-slate-800/30 border border-slate-700/40 rounded-xl p-5 hover:border-emerald-700/40 transition">
+                <div className="text-3xl mb-3">{icon}</div>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="text-base font-bold text-slate-100">{title}</h3>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 whitespace-nowrap shrink-0">{tag}</span>
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mb-2">{item.title}</h3>
-                <p className="text-slate-600 text-sm">{item.desc}</p>
+                <p className="text-slate-400 text-xs leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Deliverables & Process */}
-      <section className="py-20 px-4 bg-slate-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
-            <div className="grid grid-cols-1 md:grid-cols-2">
-              <div className="p-10 flex flex-col justify-center">
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">Entregáveis Claros e Acionáveis</h3>
-                <p className="text-slate-600 mb-6">Ao final da análise, você não recebe apenas números soltos. Recebe um plano de guerra.</p>
-                
-                <div className="space-y-6">
-                  <div className="flex items-start">
-                    <div className="bg-slate-100 p-3 rounded-lg mr-4">
-                      <FileText className="w-6 h-6 text-brand-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800">Relatório Técnico Completo (PDF)</h4>
-                      <p className="text-sm text-slate-500">Documento detalhado com simulação completa, premissas e cálculos. Seu guia mestre.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start">
-                    <div className="bg-slate-100 p-3 rounded-lg mr-4">
-                      <TrendingUp className="w-6 h-6 text-brand-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800">Apresentação Executiva</h4>
-                      <p className="text-sm text-slate-500">Reunião online com especialistas para expor resultados e recomendações estratégicas.</p>
-                    </div>
-                  </div>
-                </div>
+      {/* ── Cronograma urgência ── */}
+      <section className="py-20 px-4">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3">O relógio está correndo</h2>
+          <p className="text-slate-400 text-center mb-10">Cada mês sem preparação é um mês de vantagem para o concorrente.</p>
 
-                <div className="mt-8 pt-8 border-t border-slate-100">
-                   <div className="flex items-center text-slate-800 font-bold">
-                      <Clock className="w-5 h-5 mr-2 text-brand-600" />
-                      Prazo de Entrega: <span className="text-brand-600 ml-1">Até 10 dias úteis</span>
-                   </div>
-                   <p className="text-xs text-slate-400 mt-2">Metodologia ágil desenhada para gerar inteligência rápida.</p>
+          <div className="space-y-4">
+            {[
+              { period: 'Jan 2026', status: 'done', label: 'CONCLUÍDO', title: 'IBS e CBS nas notas fiscais', desc: 'Obrigação iniciada. Empresas do regime geral já emitem com os novos campos.' },
+              { period: 'Abr 2026', status: 'current', label: 'AGORA', title: 'Fim da tolerância para erros', desc: 'A Receita Federal encerrou o prazo de tolerância. ERPs devem estar configurados.' },
+              { period: 'Set 2026', status: 'warning', label: 'DECISIVO', title: 'Prazo: Simples Híbrido', desc: 'Empresas do Simples precisam decidir sobre o regime híbrido. Quem perder pode perder clientes B2B em 2027.' },
+              { period: '2027', status: 'upcoming', label: 'CRÍTICO', title: 'Extinção do PIS/COFINS', desc: 'CBS entra com alíquota cheia (~8,8%). Impacto direto no caixa de todas as empresas.' },
+            ].map(({ period, status, label, title, desc }) => {
+              const colors: Record<string, string> = {
+                done: 'border-slate-600 text-slate-500',
+                current: 'border-emerald-500 text-emerald-400',
+                warning: 'border-red-500 text-red-400',
+                upcoming: 'border-amber-500 text-amber-400',
+              };
+              const tagColors: Record<string, string> = {
+                done: 'bg-slate-800 text-slate-500',
+                current: 'bg-emerald-900/50 text-emerald-400',
+                warning: 'bg-red-900/50 text-red-400',
+                upcoming: 'bg-amber-900/50 text-amber-400',
+              };
+              return (
+                <div key={period} className={`flex gap-4 p-4 rounded-xl border ${colors[status]} bg-slate-900/40`}>
+                  <div className="shrink-0 text-right w-20">
+                    <p className="font-bold text-sm">{period}</p>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tagColors[status]}`}>{label}</span>
+                  </div>
+                  <div className="border-l border-slate-700 pl-4">
+                    <p className="font-semibold text-sm text-slate-200 mb-0.5">{title}</p>
+                    <p className="text-xs text-slate-500 leading-relaxed">{desc}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-slate-900 p-10 flex flex-col justify-center items-center text-center text-white relative overflow-hidden">
-                 <div className="absolute inset-0 bg-brand-600/20 pattern-grid-lg opacity-20"></div>
-                 <h3 className="text-2xl font-bold mb-6 relative z-10">Proteja seu Capital de Giro</h3>
-                 <blockquote className="text-xl italic font-serif text-brand-100 mb-6 relative z-10">
-                   "Quanto custa para sua empresa ficar 1 mês sem capital de giro por erro de cálculo tributário?"
-                 </blockquote>
-                 <div className="w-full bg-white/10 p-6 rounded-xl backdrop-blur-sm border border-white/20 relative z-10">
-                    <p className="text-sm font-medium">O valor investido neste diagnóstico é uma fração do prejuízo potencial da falta de preparação.</p>
-                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* Pricing Section - Table Layout */}
-      <section id="pricing" className="py-20 px-4 bg-white">
+      {/* ── Planos ── */}
+      <section id="planos" className="py-20 px-4 bg-slate-900/40 border-y border-slate-800/50">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900">Investimento Estratégico</h2>
-            <p className="text-slate-600 mt-2">Um investimento para proteger a continuidade do seu negócio.</p>
-          </div>
+          <h2 className="text-3xl font-bold text-center mb-3">Escolha seu plano</h2>
+          <p className="text-slate-400 text-center mb-12">Comece grátis. Evolua quando quiser.</p>
 
-          <div className="border-2 border-brand-900 rounded-lg overflow-hidden text-slate-800 shadow-sm">
-            
-            {/* Table Header */}
-            <div className="hidden md:grid grid-cols-12 bg-brand-50 border-b-2 border-brand-900 font-bold text-brand-900 text-center">
-              <div className="col-span-4 p-4 border-r border-brand-900 flex items-center justify-center">Regime & Documentação</div>
-              <div className="col-span-4 p-4 border-r border-brand-900 flex items-center justify-center">Valor do Investimento</div>
-              <div className="col-span-4 p-4 flex items-center justify-center">Condições</div>
-            </div>
-
-            {/* Row 1: Simples Nacional */}
-            <div className="grid grid-cols-1 md:grid-cols-12 bg-brand-50 border-b-2 border-brand-900 last:border-b-0">
-              <div className="col-span-1 md:col-span-4 p-6 border-b md:border-b-0 md:border-r border-brand-900 flex flex-col justify-center">
-                <h3 className="text-xl font-extrabold text-brand-900 mb-4">Simples Nacional</h3>
-                <p className="text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Documentos Essenciais</p>
-                <ul className="text-sm text-slate-600 space-y-1">
-                  <li>• Habilitação e-CAC</li>
-                  <li>• Arquivos PGDAs</li>
-                  <li>• XMLs de entrada/saída (12 meses)</li>
-                </ul>
-              </div>
-              <div className="col-span-1 md:col-span-4 p-6 border-b md:border-b-0 md:border-r border-brand-900 flex items-center justify-center bg-brand-50/50">
-                <div className="text-center">
-                   <span className="block text-3xl font-extrabold text-brand-900">02</span>
-                   <span className="text-sm font-bold text-brand-900 uppercase">salários mínimos vigentes</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              {
+                name: 'Freemium',
+                price: 'Grátis',
+                period: '',
+                tag: '🎁 7 dias',
+                highlight: false,
+                badge: null,
+                desc: 'Experimente sem compromisso.',
+                features: ['Notícias em tempo real', 'Cronograma dinâmico', 'JaxAI — 3 perguntas/dia', 'Dashboard'],
+                missing: ['Cadeia de Valor', 'Guia do Contador 4.0', 'Guias de Ação', 'Intérprete Legislativo'],
+                cta: 'Começar Grátis',
+                action: () => onBuy(),
+              },
+              {
+                name: 'Mensal',
+                price: 'R$27',
+                period: '/mês',
+                tag: null,
+                highlight: false,
+                badge: null,
+                desc: 'Acesso completo. Cancele quando quiser.',
+                features: ['Tudo do Freemium', 'JaxAI — 15 perguntas/dia', 'Cadeia de Valor — 5/dia', 'Guia do Contador 4.0', 'Guias de Ação — 10/dia', 'Intérprete — 10/dia'],
+                missing: ['Acesso vitalício'],
+                cta: 'Assinar Agora',
+                action: () => { window.open('https://pay.kiwify.com.br/DM37j2q', '_blank'); },
+              },
+              {
+                name: 'Vitalício',
+                price: 'R$97',
+                period: ' único',
+                tag: null,
+                highlight: true,
+                badge: '⭐ Melhor custo-benefício',
+                desc: 'Pague uma vez. Use para sempre.',
+                features: ['Tudo do Mensal', 'JaxAI — 20 perguntas/dia', 'Cadeia de Valor — 10/dia', 'Guias de Ação — 15/dia', 'Intérprete — 15/dia', 'Todas as atualizações futuras', 'Acesso vitalício garantido'],
+                missing: [],
+                cta: 'Garantir Acesso Vitalício',
+                action: () => { window.open('https://pay.kiwify.com.br/myXjxAN', '_blank'); },
+              },
+            ].map((plan) => (
+              <div
+                key={plan.name}
+                className={`relative rounded-2xl border flex flex-col transition-all ${
+                  plan.highlight
+                    ? 'border-emerald-500/60 bg-gradient-to-b from-emerald-950/60 to-slate-900/40 shadow-[0_0_40px_rgba(52,211,153,0.15)]'
+                    : 'border-slate-700/50 bg-slate-900/40'
+                }`}
+              >
+                {plan.badge && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                    <span className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap">
+                      {plan.badge}
+                    </span>
+                  </div>
+                )}
+                {plan.tag && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                    <span className="bg-slate-700 text-slate-300 text-[11px] font-bold px-4 py-1 rounded-full border border-slate-600 whitespace-nowrap">
+                      {plan.tag}
+                    </span>
+                  </div>
+                )}
+                <div className="p-6 flex flex-col flex-1">
+                  <h3 className={`text-lg font-bold mb-1 ${plan.highlight ? 'text-emerald-300' : 'text-slate-200'}`}>{plan.name}</h3>
+                  <p className="text-slate-500 text-xs mb-4">{plan.desc}</p>
+                  <div className="flex items-end gap-1 mb-5">
+                    <span className={`text-4xl font-black ${plan.highlight ? 'text-white' : 'text-slate-100'}`}>{plan.price}</span>
+                    <span className="text-slate-500 text-sm mb-1">{plan.period}</span>
+                  </div>
+                  <ul className="space-y-2 mb-6 flex-1">
+                    {plan.features.map(f => (
+                      <li key={f} className="flex items-start gap-2 text-xs text-slate-300">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                    {plan.missing.map(f => (
+                      <li key={f} className="flex items-start gap-2 text-xs text-slate-600 line-through">
+                        <span className="w-3.5 h-3.5 shrink-0">✕</span>
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={plan.action}
+                    className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
+                      plan.highlight
+                        ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white shadow-[0_4px_20px_rgba(52,211,153,0.3)]'
+                        : 'bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600/50'
+                    }`}
+                  >
+                    {plan.cta}
+                  </button>
                 </div>
               </div>
-              <div className="col-span-1 md:col-span-4 p-6 flex items-center justify-center">
-                 <div className="text-center font-bold text-brand-900 leading-relaxed">
-                   50% na contratação<br/>
-                   <span className="block w-8 h-px bg-brand-300 mx-auto my-1"></span>
-                   50% na entrega
-                 </div>
-              </div>
-            </div>
-
-            {/* Row 2: Lucro Presumido/Real */}
-            <div className="grid grid-cols-1 md:grid-cols-12 bg-brand-50">
-              <div className="col-span-1 md:col-span-4 p-6 border-b md:border-b-0 md:border-r border-brand-900 flex flex-col justify-center">
-                <h3 className="text-xl font-extrabold text-brand-900 mb-4">Lucro Presumido / Real</h3>
-                <p className="text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Documentos Essenciais</p>
-                <ul className="text-sm text-slate-600 space-y-1">
-                   <li>• Habilitação e-CAC</li>
-                   <li>• Arquivos SPED Contribuições/Fiscal (12 meses)</li>
-                </ul>
-              </div>
-              <div className="col-span-1 md:col-span-4 p-6 border-b md:border-b-0 md:border-r border-brand-900 flex items-center justify-center bg-brand-50/50">
-                <div className="text-center">
-                   <span className="block text-3xl font-extrabold text-brand-900">03</span>
-                   <span className="text-sm font-bold text-brand-900 uppercase">salários mínimos vigentes</span>
-                </div>
-              </div>
-              <div className="col-span-1 md:col-span-4 p-6 flex items-center justify-center">
-                 <div className="text-center font-bold text-brand-900 leading-relaxed">
-                   50% na contratação<br/>
-                   <span className="block w-8 h-px bg-brand-300 mx-auto my-1"></span>
-                   50% na entrega
-                 </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-3 text-xs text-slate-500 text-center">
-             *Valores para matriz. Para filiais, consultar condições.
+            ))}
           </div>
 
-          <div className="mt-8 text-center">
-             <button 
-               onClick={handleWhatsAppClick} 
-               className="text-brand-800 hover:text-brand-600 font-bold underline transition"
-             >
-                Entre em contato via WhatsApp para contratar
-             </button>
+          <div className="flex items-center justify-center gap-2 mt-8 text-slate-500 text-sm">
+            <Shield className="w-4 h-4" />
+            <span>Garantia de 7 dias · Sem burocracia · Cancele quando quiser</span>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-12 px-4 text-center">
-        <div className="max-w-4xl mx-auto">
-          <p className="mb-4">TaxReform.ai Brasil &copy; 2025</p>
-          <p className="text-sm">
-            Obs: O prazo de entrega pode variar de acordo com a complexidade dos dados a serem processados e do ramo de atuação do cliente.
+      {/* ── FAQ ── */}
+      <section className="py-20 px-4">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-2xl font-bold text-center mb-10">Perguntas frequentes</h2>
+          <div className="space-y-4">
+            {[
+              { q: 'Para qual tipo de empresa é indicado?', a: 'Para qualquer empresa brasileira: MEI, Simples Nacional, Lucro Presumido ou Lucro Real. Cada regime tem impactos específicos na Reforma e a plataforma cobre todos eles.' },
+              { q: 'Preciso ter conhecimento tributário para usar?', a: 'Não. O JaxAI traduz os termos técnicos em linguagem de negócio. Empresários e gestores usam sem dificuldade.' },
+              { q: 'As informações são atualizadas?', a: 'Sim. O Radar de Inteligência usa Google Search em tempo real. O Cronograma é atualizado via IA com base na legislação mais recente.' },
+              { q: 'O que acontece após os 7 dias grátis?', a: 'Você mantém acesso limitado (notícias + 3 perguntas/dia ao JaxAI). Para acesso completo, basta escolher o plano Mensal ou Vitalício.' },
+            ].map(({ q, a }) => (
+              <div key={q} className="bg-slate-900/40 border border-slate-800/50 rounded-xl p-5">
+                <p className="font-semibold text-slate-200 text-sm mb-2">{q}</p>
+                <p className="text-slate-500 text-sm leading-relaxed">{a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA Final ── */}
+      <section className="py-20 px-4 bg-gradient-to-b from-emerald-950/30 to-slate-900/40 border-t border-emerald-900/30">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-4">
+            Setembro de 2026 está chegando.
+          </h2>
+          <p className="text-slate-400 mb-8 leading-relaxed">
+            A decisão sobre o Simples Híbrido não espera. O impacto no Split Payment não espera.
+            <br />Sua preparação pode começar hoje — gratuitamente.
           </p>
-          <div className="mt-8 pt-8 border-t border-slate-800">
-             <button onClick={onBuy} className="text-white hover:text-brand-400 transition underline">
-                Já tenho uma conta, quero acessar a plataforma
-             </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => scrollTo('planos')}
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-bold py-4 px-8 rounded-xl shadow-[0_4px_30px_rgba(52,211,153,0.4)] transition-all hover:-translate-y-0.5"
+            >
+              Começar grátis agora <ArrowRight className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => handleWhatsApp('Olá, Rogério! Vi a landing page do TaxReform.ai Brasil e quero tirar algumas dúvidas antes de assinar.')}
+              className="flex items-center justify-center gap-2 border border-slate-600 hover:border-emerald-600 text-slate-300 hover:text-white font-semibold py-4 px-8 rounded-xl transition"
+            >
+              Falar no WhatsApp
+            </button>
           </div>
         </div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer className="bg-slate-900/80 border-t border-slate-800 py-10 px-4 text-center">
+        <p className="text-slate-500 text-sm mb-2">TaxReform.ai Brasil © 2026 — Powered by ARG4 Negócios</p>
+        <p className="text-slate-600 text-xs mb-6">Plataforma de inteligência tributária para a Reforma de 2026</p>
+        <button onClick={onBuy} className="text-emerald-500 hover:text-emerald-400 transition text-sm underline">
+          Já tenho conta — acessar a plataforma
+        </button>
       </footer>
     </div>
   );
