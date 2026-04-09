@@ -118,7 +118,14 @@ function App() {
             onNavigate={setAuthView}
             onSignUpSuccess={(data) => {
               setRegistrationData(data);
-              setAuthView('pricing');
+              const planId = sessionStorage.getItem('selectedPlanId') || '';
+              if (planId === 'free' || !planId) {
+                // Freemium → entra direto na plataforma
+                handleLoginSuccess();
+              } else {
+                // Plano pago → vai para Pricing para confirmar
+                setAuthView('pricing');
+              }
             }}
           />
         );
