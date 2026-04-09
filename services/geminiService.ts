@@ -50,6 +50,50 @@ const cleanJsonOutput = (text: string | undefined): string => {
   return text.replace(/```json/g, "").replace(/```/g, "").trim();
 };
 
+// ─── Rate Limiter por usuário (localStorage) ──────────────────────────────
+// Limites diários por tipo de consulta
+const RATE_LIMITS = {
+  consultant: 20,    // JaxAI — 20 perguntas/dia
+  simulation: 10,    // Simulações — 10/dia
+  supplyChain: 10,   // Cadeia de valor — 10/dia
+  interpreter: 15,   // Intérprete legal — 15/dia
+  news: 30,          // Notícias (tem cache 15min, raramente bate) — 30/dia
+  timeline: 5,       // Cronograma (tem cache 24h) — 5/dia
+  actionGuide: 15,   // Guias de ação — 15/dia
+  accountant: 5,     // Guia contador (pesado) — 5/dia
+};
+
+type RateLimitKey = keyof typeof RATE_LIMITS;
+
+export class RateLimitError extends Error {
+  constructor(public key: RateLimitKey, public limit: number) {
+    super(`Limite diário de ${limit} consultas atingido para "${key}". Tente novamente amanhã.`);
+    this.name = 'RateLimitError';
+  }
+}
+
+function checkRateLimit(key: RateLimitKey): void {
+  const today = new Date().toISOString().split('T')[0]; // "2026-04-09"
+  const storageKey = `rl_${key}_${today}`;
+  const current = parseInt(localStorage.getItem(storageKey) || '0', 10);
+  const limit = RATE_LIMITS[key];
+
+  if (current >= limit) {
+    throw new RateLimitError(key, limit);
+  }
+
+  localStorage.setItem(storageKey, String(current + 1));
+}
+
+// Exporta para uso nos componentes (exibir contador ao usuário)
+export function getRateLimitUsage(key: RateLimitKey): { used: number; limit: number; remaining: number } {
+  const today = new Date().toISOString().split('T')[0];
+  const storageKey = `rl_${key}_${today}`;
+  const used = parseInt(localStorage.getItem(storageKey) || '0', 10);
+  const limit = RATE_LIMITS[key];
+  return { used, limit, remaining: Math.max(0, limit - used) };
+}
+
 // ─── Retry automático para erros 503 (alta demanda) ───────────────────────
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -89,8 +133,9 @@ const TIMELINE_CACHE_DURATION_MS = 1000 * 60 * 60 * 24;
 export const fetchReformTimeline = async (): Promise<TimelineItem[]> => {
   const now = Date.now();
   if (timelineCache.data && now - timelineCache.timestamp < TIMELINE_CACHE_DURATION_MS) {
-    return timelineCache.data;
+    return timelineCache.data; // cache — não conta no rate limit
   }
+  checkRateLimit('timeline');
 
   const currentDate = new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -147,8 +192,9 @@ export const fetchLatestUpdates = async (role: UserRole, topic?: string): Promis
   const cacheKey = `${role}-${topic || 'general'}`;
   const now = Date.now();
   if (newsCache[cacheKey] && (now - newsCache[cacheKey].timestamp < CACHE_DURATION_MS)) {
-    return newsCache[cacheKey].data;
+    return newsCache[cacheKey].data; // cache — não conta no rate limit
   }
+  checkRateLimit('news');
 
   const model = "gemini-2.5-flash";
   const currentDate = new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -192,6 +238,7 @@ export const fetchLatestUpdates = async (role: UserRole, topic?: string): Promis
 
 // ─── Tax Simulation ───────────────────────────────────────────────────────
 export const runTaxSimulation = async (input: SimulationInput, role: UserRole): Promise<SimulationResult> => {
+  checkRateLimit('simulation');
   const model = "gemini-2.5-flash";
   const prompt = `
     Realize uma simulação de impactos da Reforma Tributária (EC 132/2023).
@@ -304,6 +351,7 @@ export function simuladorEstrategicoIva(input: SupplyChainInput, futureRegime?: 
 }
 
 export const runSupplyChainAnalysis = async (input: SupplyChainInput): Promise<SupplyChainResult> => {
+  checkRateLimit('supplyChain');
   const model = "gemini-2.5-flash";
   const prompt = `
     Atue como consultor tributário explicando para um EMPREENDEDOR LEIGO.
@@ -353,6 +401,7 @@ export const runSupplyChainAnalysis = async (input: SupplyChainInput): Promise<S
 
 // ─── Interpreter ──────────────────────────────────────────────────────────
 export const interpretLegalText = async (text: string, role: UserRole): Promise<string> => {
+  checkRateLimit('interpreter');
   const model = "gemini-2.5-flash";
   const prompt = `Analise o texto legislativo: "${text}" Para o perfil: ${role} Formate em Markdown.`;
   try {
@@ -370,6 +419,7 @@ export const interpretLegalText = async (text: string, role: UserRole): Promise<
 
 // ─── Consultant ───────────────────────────────────────────────────────────
 export const askTaxConsultant = async (question: string, role: UserRole): Promise<string> => {
+  checkRateLimit('consultant');
   const model = "gemini-2.5-flash";
   const prompt = `PERGUNTA (${role}): "${question}" Responda como JaxAI (Consultor Tributário). Use Markdown.`;
   try {
@@ -391,6 +441,7 @@ export const askTaxConsultant = async (question: string, role: UserRole): Promis
 
 // ─── Action Guide ─────────────────────────────────────────────────────────
 export const getActionGuide = async (actionId: string, actionTitle: string): Promise<any> => {
+  checkRateLimit('actionGuide');
   const model = "gemini-2.5-flash";
   const prompt = `
     Você é consultor tributário especialista na Reforma Tributária Brasileira (EC 132/2023, PLP 68/2024).
@@ -436,6 +487,7 @@ export const getActionGuide = async (actionId: string, actionTitle: string): Pro
 
 // ─── Accountant Guide ─────────────────────────────────────────────────────
 export const getAccountantStrategicGuide = async (): Promise<AccountantGuideData> => {
+  checkRateLimit('accountant');
   const model = "gemini-2.5-flash";
   const prompt = `
     Gere guia estratégico para Contadores 2026 sobre a Reforma Tributária.
