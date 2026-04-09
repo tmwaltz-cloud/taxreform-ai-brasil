@@ -12,6 +12,7 @@ import { Landing } from './pages/Landing';
 import { SalesPage } from './pages/SalesPage';
 import { StartupPopup } from './components/StartupPopup';
 import { MotorTributarioPopup } from './components/MotorTributarioPopup';
+import { UpsellPopup } from './components/UpsellPopup';
 import { Login } from './pages/Login';
 import { SignUp } from './pages/SignUp';
 import { Pricing } from './pages/Pricing';
@@ -32,6 +33,7 @@ function App() {
   const [showSalesPage, setShowSalesPage] = useState(false);
   const [showStartupPopup, setShowStartupPopup] = useState(false);
   const [showMotorPopup, setShowMotorPopup] = useState(false);
+  const [showUpsell, setShowUpsell] = useState(false);
 
   // ─── Navigation State ────────────────────────────────────────────────────
   const [currentView, setCurrentView] = useState<'dashboard' | 'supply-chain' | 'interpreter' | 'consultant' | 'accountant-guide' | 'action-guide'>('dashboard');
@@ -44,7 +46,7 @@ function App() {
     if (!isAuthenticated) return;
     const dismissed = sessionStorage.getItem('motor_popup_dismissed');
     if (dismissed) return;
-    const timer = setTimeout(() => setShowMotorPopup(true), 180000); // 3 minutos
+    const timer = setTimeout(() => setShowMotorPopup(true), 180000);
     return () => clearTimeout(timer);
   }, [isAuthenticated]);
 
@@ -72,6 +74,16 @@ function App() {
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
     setShowWelcomeWizard(true);
+
+    // Incrementa contador de logins para upsell freemium
+    const count = parseInt(localStorage.getItem('login_count') || '0', 10);
+    localStorage.setItem('login_count', String(count + 1));
+
+    // Mostra upsell a partir do 2º login se for usuário free
+    const plan = localStorage.getItem('user_plan');
+    if (plan === 'free' && count >= 1) {
+      setShowUpsell(true);
+    }
   };
 
   const handleLogout = async () => {
@@ -79,6 +91,7 @@ function App() {
     setAuthView('login');
     setShowLanding(true);
     sessionStorage.removeItem('motor_popup_dismissed');
+    sessionStorage.removeItem('upsell_dismissed');
   };
 
   // ─── 1. Landing Page ─────────────────────────────────────────────────────
@@ -166,12 +179,18 @@ function App() {
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden">
+
       {/* Startup Popup */}
       {showStartupPopup && !showWelcomeWizard && (
         <StartupPopup onClose={() => setShowStartupPopup(false)} />
       )}
 
-      {/* Motor Tributário 5.0 — Popup de upsell (aparece após 3 min) */}
+      {/* Upsell Freemium — aparece no 2º acesso */}
+      {showUpsell && (
+        <UpsellPopup onClose={() => setShowUpsell(false)} />
+      )}
+
+      {/* Motor Tributário 5.0 — aparece após 3 min */}
       {showMotorPopup && (
         <MotorTributarioPopup
           onClose={() => {
