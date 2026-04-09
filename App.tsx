@@ -1,229 +1,320 @@
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
-import { Dashboard } from './pages/Dashboard';
-import { Interpreter } from './pages/Interpreter';
-import { SupplyChain } from './pages/SupplyChain';
-import { Consultant } from './pages/Consultant';
-import { AccountantGuide } from './pages/AccountantGuide';
-import { ActionGuide } from './pages/ActionGuide';
-import { Onboarding } from './pages/Onboarding';
-import { Landing } from './pages/Landing';
-import { SalesPage } from './pages/SalesPage';
-import { StartupPopup } from './components/StartupPopup';
-import { MotorTributarioPopup } from './components/MotorTributarioPopup';
-import { UpsellPopup } from './components/UpsellPopup';
-import { Login } from './pages/Login';
-import { SignUp } from './pages/SignUp';
-import { Pricing } from './pages/Pricing';
-import { ForgotPassword } from './pages/ForgotPassword';
-import { UserRole, AuthView } from './types';
+import { supabase } from './services/supabaseClient';
+import type { Session } from '@supabase/supabase-js';
 
-function App() {
-  // ─── Auth State ──────────────────────────────────────────────────────────
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authView, setAuthView] = useState<AuthView>('login');
-  const [registrationData, setRegistrationData] = useState<{name: string, phone: string, email: string, role: UserRole} | null>(null);
+// Pages
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import SignUpPage from './pages/SignUpPage';
+import PricingPage from './pages/PricingPage';
+import SalesPage from './pages/SalesPage';
+import Dashboard from './pages/Dashboard';
+import ConsultantPage from './pages/ConsultantPage';
+import InterpreterPage from './pages/InterpreterPage';
+import SupplyChainPage from './pages/SupplyChainPage';
+import AccountantGuidePage from './pages/AccountantGuidePage';
+import ActionGuidePage from './pages/ActionGuidePage';
+import OnboardingPage from './pages/OnboardingPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 
-  // ─── App State ───────────────────────────────────────────────────────────
-  const [showLanding, setShowLanding] = useState(true);
-  const [showWelcomeWizard, setShowWelcomeWizard] = useState(false);
-  const [showPublicOnboarding, setShowPublicOnboarding] = useState(false);
-  const [publicOnboardingStep, setPublicOnboardingStep] = useState(0);
-  const [showSalesPage, setShowSalesPage] = useState(false);
+// Components
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
+import StartupPopup from './components/StartupPopup';
+import MotorTributarioPopup from './components/MotorTributarioPopup';
+import UpsellPopup from './components/UpsellPopup';
+
+export type PageType =
+  | 'landing'
+  | 'login'
+  | 'signup'
+  | 'pricing'
+  | 'sales'
+  | 'onboarding'
+  | 'forgot-password'
+  | 'dashboard'
+  | 'consultant'
+  | 'interpreter'
+  | 'supply-chain'
+  | 'accountant-guide'
+  | 'action-guide';
+
+export type PlanId = 'free' | 'monthly' | 'lifetime';
+
+const PLATFORM_PAGES: PageType[] = [
+  'dashboard',
+  'consultant',
+  'interpreter',
+  'supply-chain',
+  'accountant-guide',
+  'action-guide',
+];
+
+const App: React.FC = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState<PageType>('landing');
+  const [selectedPlanId, setSelectedPlanId] = useState<PlanId | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ─── Popups ───────────────────────────────────────────────
   const [showStartupPopup, setShowStartupPopup] = useState(false);
   const [showMotorPopup, setShowMotorPopup] = useState(false);
-  const [showUpsell, setShowUpsell] = useState(false);
+  const [showUpsellPopup, setShowUpsellPopup] = useState(false);
 
-  // ─── Navigation State ────────────────────────────────────────────────────
-  const [currentView, setCurrentView] = useState<'dashboard' | 'supply-chain' | 'interpreter' | 'consultant' | 'accountant-guide' | 'action-guide'>('dashboard');
-  const [selectedAction, setSelectedAction] = useState<{id: string, title: string} | null>(null);
-  const [interpreterInitialText, setInterpreterInitialText] = useState("");
-  const [userRole, setUserRole] = useState<UserRole>(UserRole.EMPRESARIO);
-
-  // ─── Motor Tributário Popup — aparece 3 min após login ───────────────────
+  // ─── Auth listener ────────────────────────────────────────
   useEffect(() => {
-    if (!isAuthenticated) return;
-    const dismissed = sessionStorage.getItem('motor_popup_dismissed');
-    if (dismissed) return;
-    const timer = setTimeout(() => setShowMotorPopup(true), 180000);
-    return () => clearTimeout(timer);
-  }, [isAuthenticated]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
 
-  // ─── Handlers ────────────────────────────────────────────────────────────
-  const handleEnterPlatform = () => {
-    setShowLanding(false);
-    setAuthView('login');
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ─── Rota inicial após auth ───────────────────────────────
+  useEffect(() => {
+    if (loading) return;
+
+    if (session) {
+      // Usuário autenticado — verificar se está numa página pública
+      const isPublicPage = ['landing', 'login', 'signup', 'pricing', 'sales'].includes(currentPage);
+      if (isPublicPage) {
+        // Redirecionar para dashboard
+        setCurrentPage('dashboard');
+      }
+    }
+  }, [session, loading]);
+
+  // ─── Controle de popups na plataforma ────────────────────
+  useEffect(() => {
+    if (!session || !PLATFORM_PAGES.includes(currentPage)) return;
+
+    // Popup de boas-vindas (1º acesso)
+    const hasSeenStartup = localStorage.getItem('taxreform_startup_seen');
+    if (!hasSeenStartup) {
+      setShowStartupPopup(true);
+      localStorage.setItem('taxreform_startup_seen', 'true');
+      return;
+    }
+
+    // Popup upsell freemium (2º acesso, plano free)
+    const accessCount = parseInt(localStorage.getItem('taxreform_access_count') || '0') + 1;
+    localStorage.setItem('taxreform_access_count', String(accessCount));
+
+    if (accessCount === 2 && selectedPlanId === 'free') {
+      setTimeout(() => setShowUpsellPopup(true), 3000);
+      return;
+    }
+
+    // Motor Tributário popup (após 3 min na plataforma)
+    const motorTimer = setTimeout(() => {
+      const hasDismissedMotor = localStorage.getItem('taxreform_motor_dismissed');
+      if (!hasDismissedMotor) setShowMotorPopup(true);
+    }, 180_000); // 3 minutos
+
+    return () => clearTimeout(motorTimer);
+  }, [currentPage, session]);
+
+  // ─── Handlers de navegação ────────────────────────────────
+
+  /**
+   * Chamado pela PricingPage quando usuário seleciona um plano.
+   * - Se 'free': vai direto para signup sem passar por Kiwify
+   * - Se pago: vai para signup (Kiwify processa após cadastro)
+   */
+  const handlePlanSelect = (planId: PlanId) => {
+    setSelectedPlanId(planId);
+    setCurrentPage('signup');
   };
 
-  const handleStartPublicOnboarding = (step: number = 0) => {
-    setPublicOnboardingStep(step);
-    setShowLanding(false);
-    setShowPublicOnboarding(true);
-  };
-
-  const handleWelcomeComplete = () => {
-    setShowWelcomeWizard(false);
-  };
-
-  const handlePublicOnboardingComplete = () => {
-    setShowPublicOnboarding(false);
-    setAuthView('login');
-  };
-
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-    setShowWelcomeWizard(true);
-
-    // Incrementa contador de logins para upsell freemium
-    const count = parseInt(localStorage.getItem('login_count') || '0', 10);
-    localStorage.setItem('login_count', String(count + 1));
-
-    // Mostra upsell a partir do 2º login se for usuário free
-    const plan = localStorage.getItem('user_plan');
-    if (plan === 'free' && count >= 1) {
-      setShowUpsell(true);
+  /**
+   * Chamado pela SignUpPage após cadastro bem-sucedido.
+   * - Se plano free: entra direto na plataforma (onboarding)
+   * - Se plano pago: redireciona para Kiwify
+   */
+  const handleSignUpSuccess = (planId: PlanId) => {
+    if (planId === 'free') {
+      // ✅ CORREÇÃO PRINCIPAL: free entra direto, não volta para pricing
+      setCurrentPage('onboarding');
+    } else {
+      // Pago: redirecionar para Kiwify (a SignUpPage já deve abrir a URL)
+      // Após retorno (webhook confirma), usuário faz login e cai no dashboard
+      setCurrentPage('login');
     }
   };
 
-  const handleLogout = async () => {
-    setIsAuthenticated(false);
-    setAuthView('login');
-    setShowLanding(true);
-    sessionStorage.removeItem('motor_popup_dismissed');
-    sessionStorage.removeItem('upsell_dismissed');
+  /**
+   * Chamado pela OnboardingPage quando usuário conclui onboarding.
+   */
+  const handleOnboardingComplete = () => {
+    setCurrentPage('dashboard');
   };
 
-  // ─── 1. Landing Page ─────────────────────────────────────────────────────
-  if (showLanding) {
-    return <Landing onEnter={handleEnterPlatform} onStartOnboarding={handleStartPublicOnboarding} />;
+  const navigate = (page: PageType) => {
+    setCurrentPage(page);
+    setSidebarOpen(false);
+  };
+
+  // ─── Loading splash ───────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm">Carregando TaxReform.ai...</p>
+        </div>
+      </div>
+    );
   }
 
-  // ─── 1b. Public Onboarding ────────────────────────────────────────────────
-  if (showPublicOnboarding) {
-    return <Onboarding initialStep={publicOnboardingStep} onComplete={handlePublicOnboardingComplete} onLearnMore={() => {}} />;
-  }
-
-  // ─── 2. Auth Views ────────────────────────────────────────────────────────
-  if (!isAuthenticated) {
-    if (showSalesPage) {
-      return <SalesPage onBack={() => setShowSalesPage(false)} onBuy={() => { setShowSalesPage(false); setAuthView('signup'); }} />;
-    }
-    switch (authView) {
+  // ─── Páginas públicas (sem sidebar) ──────────────────────
+  const renderPublicPage = () => {
+    switch (currentPage) {
+      case 'landing':
+        return (
+          <LandingPage
+            onNavigate={navigate}
+            onPlanSelect={handlePlanSelect}
+          />
+        );
       case 'login':
-        return <Login onLogin={handleLoginSuccess} onNavigate={setAuthView} />;
+        return (
+          <LoginPage
+            onNavigate={navigate}
+            onLoginSuccess={() => navigate('dashboard')}
+          />
+        );
       case 'signup':
         return (
-          <SignUp
-            onNavigate={setAuthView}
-            onSignUpSuccess={(data) => {
-              setRegistrationData(data);
-              const planId = sessionStorage.getItem('selectedPlanId') || '';
-              if (planId === 'free' || !planId) {
-                // Freemium → entra direto na plataforma
-                handleLoginSuccess();
-              } else {
-                // Plano pago → vai para Pricing para confirmar
-                setAuthView('pricing');
-              }
-            }}
+          <SignUpPage
+            selectedPlanId={selectedPlanId}
+            onNavigate={navigate}
+            onSignUpSuccess={handleSignUpSuccess}
           />
         );
       case 'pricing':
-        return <Pricing onNavigate={setAuthView} userData={registrationData} />;
+        return (
+          <PricingPage
+            onNavigate={navigate}
+            onPlanSelect={handlePlanSelect}
+          />
+        );
+      case 'sales':
+        return <SalesPage onNavigate={navigate} />;
       case 'forgot-password':
-        return <ForgotPassword onNavigate={setAuthView} />;
-      default:
-        return <Login onLogin={handleLoginSuccess} onNavigate={setAuthView} />;
-    }
-  }
-
-  // ─── 3. Welcome Wizard (pós-login) ────────────────────────────────────────
-  if (showWelcomeWizard) {
-    return <Onboarding onComplete={handleWelcomeComplete} onLearnMore={() => {}} />;
-  }
-
-  // ─── 4. Main App ──────────────────────────────────────────────────────────
-  const renderView = () => {
-    switch (currentView) {
-      case 'dashboard':
+        return <ForgotPasswordPage onNavigate={navigate} />;
+      case 'onboarding':
         return (
-          <Dashboard
-            userRole={userRole}
-            onViewChange={setCurrentView}
-            onActionSelect={(id, title) => { setSelectedAction({ id, title }); setCurrentView('action-guide'); }}
-            onNavigateToInterpreter={(text) => { setInterpreterInitialText(text); setCurrentView('interpreter'); }}
+          <OnboardingPage
+            onComplete={handleOnboardingComplete}
+            onNavigate={navigate}
           />
         );
-      case 'action-guide':
-        return (
-          <ActionGuide
-            actionId={selectedAction?.id || ''}
-            actionTitle={selectedAction?.title || ''}
-            onNavigateHome={() => setCurrentView('dashboard')}
-            onNavigateToInterpreter={(text) => { setInterpreterInitialText(text); setCurrentView('interpreter'); }}
-          />
-        );
-      case 'consultant':
-        return <Consultant userRole={userRole} onNavigateHome={() => setCurrentView('dashboard')} />;
-      case 'accountant-guide':
-        return <AccountantGuide onNavigateHome={() => setCurrentView('dashboard')} />;
-      case 'supply-chain':
-        return <SupplyChain onNavigateHome={() => setCurrentView('dashboard')} />;
-      case 'interpreter':
-        return <Interpreter userRole={userRole} onNavigateHome={() => setCurrentView('dashboard')} initialText={interpreterInitialText} />;
       default:
         return (
-          <Dashboard
-            userRole={userRole}
-            onViewChange={setCurrentView}
-            onActionSelect={(id, title) => { setSelectedAction({ id, title }); setCurrentView('action-guide'); }}
-            onNavigateToInterpreter={(text) => { setInterpreterInitialText(text); setCurrentView('interpreter'); }}
+          <LandingPage
+            onNavigate={navigate}
+            onPlanSelect={handlePlanSelect}
           />
         );
     }
   };
 
+  // ─── Páginas da plataforma (com sidebar + header) ─────────
+  const renderPlatformPage = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return <Dashboard onNavigate={navigate} session={session} />;
+      case 'consultant':
+        return <ConsultantPage onNavigate={navigate} session={session} />;
+      case 'interpreter':
+        return <InterpreterPage onNavigate={navigate} session={session} />;
+      case 'supply-chain':
+        return <SupplyChainPage onNavigate={navigate} session={session} />;
+      case 'accountant-guide':
+        return <AccountantGuidePage onNavigate={navigate} session={session} />;
+      case 'action-guide':
+        return <ActionGuidePage onNavigate={navigate} session={session} />;
+      default:
+        return <Dashboard onNavigate={navigate} session={session} />;
+    }
+  };
+
+  // ─── Sem sessão → páginas públicas ───────────────────────
+  if (!session) {
+    return renderPublicPage();
+  }
+
+  // ─── Com sessão → layout da plataforma ───────────────────
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden">
-
-      {/* Startup Popup */}
-      {showStartupPopup && !showWelcomeWizard && (
-        <StartupPopup onClose={() => setShowStartupPopup(false)} />
+    <div className="flex h-screen bg-gray-950 overflow-hidden">
+      {/* Overlay mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-20 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
-      {/* Upsell Freemium — aparece no 2º acesso */}
-      {showUpsell && (
-        <UpsellPopup onClose={() => setShowUpsell(false)} />
-      )}
+      {/* Sidebar */}
+      <Sidebar
+        currentPage={currentPage}
+        onNavigate={navigate}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        selectedPlanId={selectedPlanId}
+        session={session}
+      />
 
-      {/* Motor Tributário 5.0 — aparece após 3 min */}
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <Header
+          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+          onNavigate={navigate}
+          session={session}
+          onLogout={async () => {
+            await supabase.auth.signOut();
+            navigate('landing');
+          }}
+        />
+        <main className="flex-1 overflow-auto">
+          {renderPlatformPage()}
+        </main>
+      </div>
+
+      {/* Popups */}
+      {showStartupPopup && (
+        <StartupPopup
+          onClose={() => setShowStartupPopup(false)}
+          onNavigate={navigate}
+        />
+      )}
       {showMotorPopup && (
         <MotorTributarioPopup
           onClose={() => {
             setShowMotorPopup(false);
-            sessionStorage.setItem('motor_popup_dismissed', '1');
+            localStorage.setItem('taxreform_motor_dismissed', 'true');
           }}
-          autoShowAfterMs={0}
         />
       )}
-
-      <Sidebar currentView={currentView} onViewChange={setCurrentView} userRole={userRole} />
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Header
-          userRole={userRole}
-          onRoleChange={setUserRole}
-          onNavigateToProfile={() => {}}
-          onNavigateHome={() => setCurrentView('dashboard')}
+      {showUpsellPopup && (
+        <UpsellPopup
+          onClose={() => setShowUpsellPopup(false)}
+          onUpgrade={() => {
+            setShowUpsellPopup(false);
+            navigate('pricing');
+          }}
         />
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          <div className="max-w-7xl mx-auto h-full">
-            {renderView()}
-          </div>
-        </main>
-      </div>
+      )}
     </div>
   );
-}
+};
 
 export default App;
