@@ -267,7 +267,7 @@ export const fetchTaxNews = async (): Promise<NewsItem[]> => {
 // ─── Supply Chain ─────────────────────────────────────────────────────────────
 
 // (mantém simuladorEstrategicoIva do original — função local, sem Gemini)
-const simuladorEstrategicoIva = (input: SupplyChainInput) => {
+export const simuladorEstrategicoIva = (input: SupplyChainInput) => {
   const aliquotaIva = 0.265;
   const fatorSimples = 0.2;
   const creditoFornecedorRegular = input.supplierRegime !== 'Simples Nacional' ? aliquotaIva : aliquotaIva * fatorSimples;
@@ -437,6 +437,12 @@ export const getActionGuide = async (actionId: string, actionTitle: string): Pro
     };
   }
 };
+
+// ─── Aliases — nomes originais mantidos para compatibilidade ─────────────────
+// Dashboard.tsx usa: fetchLatestUpdates
+export const fetchLatestUpdates = fetchTaxNews;
+// SupplyChain.tsx usa: runSupplyChainAnalysis (simuladorEstrategicoIva já é export)
+export const runSupplyChainAnalysis = analyzeSupplyChain;
 
 // ─── Accountant Guide ─────────────────────────────────────────────────────────
 
