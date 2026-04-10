@@ -237,7 +237,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
     <div className="space-y-6 animate-in fade-in duration-500 relative">
       
       {/* TOP HEADER: Trending Bar */}
-      <div className="bg-slate-900 rounded-xl p-3 flex items-center overflow-x-auto whitespace-nowrap scrollbar-hide border border-slate-700 shadow-lg">
+      <div className="bg-white rounded-xl p-3 flex items-center overflow-x-auto whitespace-nowrap scrollbar-hide border border-slate-200 shadow-sm">
          <div className="flex items-center text-red-400 font-bold text-xs uppercase tracking-wider mr-4 flex-shrink-0 animate-pulse">
             <Radio className="w-4 h-4 mr-2" /> Ao Vivo
          </div>
@@ -246,7 +246,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
                <span 
                  key={i} 
                  onClick={() => handleTopicClick(topic)}
-                 className={`text-sm font-medium cursor-pointer transition ${selectedTopic === topic ? 'text-brand-400 underline' : 'text-slate-300 hover:text-white'}`}
+                 className={`text-sm font-medium cursor-pointer transition ${selectedTopic === topic ? 'text-emerald-600 underline font-bold' : 'text-slate-500 hover:text-slate-800'}`}
                >
                   {topic}
                </span>
@@ -341,27 +341,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
          <div className="lg:col-span-4 space-y-6">
             
             {/* Status Card */}
-            <div className="bg-slate-900 text-white p-6 rounded-xl shadow-lg relative overflow-hidden flex flex-col max-h-[400px]">
+            <div className="bg-white text-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden flex flex-col max-h-[400px]">
                <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/20 rounded-full blur-2xl -mr-10 -mt-10"></div>
-               <h3 className="text-lg font-bold mb-4 flex items-center relative z-10 flex-shrink-0">
-                  <Calendar className="w-5 h-5 mr-2 text-brand-400" /> Cronograma e Riscos
+               <h3 className="text-lg font-bold mb-4 flex items-center relative z-10 flex-shrink-0 text-slate-800">
+                  <Calendar className="w-5 h-5 mr-2 text-emerald-500" /> Cronograma e Riscos
                </h3>
                <div className="space-y-4 relative z-10 overflow-y-auto pr-2 custom-scrollbar flex-1">
                   {timelineSteps.map((step, idx) => (
                     <div key={idx} className={`flex items-start ${step.status === 'future' ? 'opacity-75' : ''}`}>
                        <div className="flex-col items-center mr-3 hidden sm:flex">
                           <div className={`w-2 h-2 rounded-full mb-1 ${step.status === 'current' ? 'bg-green-500' : step.status === 'upcoming' ? 'bg-amber-500' : 'bg-slate-500'}`}></div>
-                          {idx < timelineSteps.length - 1 && <div className="w-0.5 h-full min-h-[40px] bg-slate-700"></div>}
+                          {idx < timelineSteps.length - 1 && <div className="w-0.5 h-full min-h-[40px] bg-slate-200"></div>}
                        </div>
                        <div className="pb-4">
                           <span className={`text-xs font-bold uppercase ${step.status === 'current' ? 'text-green-400' : step.status === 'upcoming' ? 'text-amber-400' : 'text-slate-400'}`}>{step.date}</span>
-                          <h4 className="text-sm font-bold text-white mt-1">{step.title}</h4>
-                          <p className="text-xs text-slate-300 mt-1">{step.description}</p>
-                          <div className="mt-2 bg-slate-800/50 p-2 rounded border border-slate-700">
+                          <h4 className="text-sm font-bold text-slate-800 mt-1">{step.title}</h4>
+                          <p className="text-xs text-slate-600 mt-1">{step.description}</p>
+                          <div className="mt-2 bg-red-50 p-2 rounded border border-red-100">
                             <span className="text-[10px] font-bold text-red-400 uppercase flex items-center mb-1">
                               <AlertTriangle className="w-3 h-3 mr-1" /> Risco ({step.urgency}):
                             </span>
-                            <p className="text-xs text-slate-400">{step.risk}</p>
+                            <p className="text-xs text-red-700">{step.risk}</p>
                           </div>
                        </div>
                     </div>
