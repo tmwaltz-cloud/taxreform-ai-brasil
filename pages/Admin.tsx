@@ -256,8 +256,19 @@ const TabUsers: React.FC = () => {
                       {fmt(user.expires_at ?? user.trial_ends_at)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        {/* Promover para vitalício */}
+                      <div className="flex gap-1 flex-wrap">
+                        {/* Tornar Mensal */}
+                        {user.plan_id !== 'monthly' && (
+                          <button
+                            disabled={isLoading}
+                            onClick={() => updatePlan(user.user_id, 'monthly', 'active')}
+                            className="px-2 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[11px] font-medium border border-emerald-500/20 transition disabled:opacity-50"
+                            title="Tornar Mensal"
+                          >
+                            <Zap size={11} />
+                          </button>
+                        )}
+                        {/* Promover para Vitalício */}
                         {user.plan_id !== 'lifetime' && (
                           <button
                             disabled={isLoading}
@@ -268,7 +279,7 @@ const TabUsers: React.FC = () => {
                             <Crown size={11} />
                           </button>
                         )}
-                        {/* Ativar/Suspender */}
+                        {/* Suspender / Reativar */}
                         {user.plan_status !== 'suspended' ? (
                           <button
                             disabled={isLoading}
@@ -327,16 +338,21 @@ const TabMetrics: React.FC = () => {
         const active = data.filter(u => ['active', 'trialing'].includes(u.plan_status)).length;
         const suspended = data.filter(u => u.plan_status === 'suspended').length;
 
-        // Cadastros por dia (últimos 14 dias)
-        const last14 = Array.from({ length: 14 }, (_, i) => {
+        // Cadastros por dia (últimos 30 dias)
+        const last30 = Array.from({ length: 30 }, (_, i) => {
           const d = new Date();
-          d.setDate(d.getDate() - (13 - i));
+          d.setDate(d.getDate() - (29 - i));
           return d.toISOString().split('T')[0];
         });
 
-        const recentSignups = last14.map(date => ({
+        const recentSignups = last30.map(date => ({
           date,
-          count: data.filter(u => u.created_at?.startsWith(date)).length,
+          count: data.filter(u => {
+            if (!u.created_at) return false;
+            // Supabase retorna ISO string — pegar só a data
+            const userDate = new Date(u.created_at).toISOString().split('T')[0];
+            return userDate === date;
+          }).length,
         }));
 
         setMetrics({ total, free, monthly, lifetime, active, suspended, recentSignups });
