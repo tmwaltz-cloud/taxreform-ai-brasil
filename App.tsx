@@ -251,6 +251,10 @@ const App: React.FC = () => {
           onNavigateToProfile={() => {}}
           onNavigateHome={() => navigate('dashboard')}
           onNavigateToAdmin={isAdmin ? () => navigate('admin') : undefined}
+          onLogout={async () => {
+            await supabase.auth.signOut();
+            navigate('landing');
+          }}
         />
         <main className="flex-1 overflow-auto">
           {renderPlatformPage()}
