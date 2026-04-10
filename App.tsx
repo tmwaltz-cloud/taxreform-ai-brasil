@@ -2,20 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
 
-// Pages
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
-import PricingPage from './pages/PricingPage';
+// Pages — nomes reais dos arquivos em src/pages/
+import Landing from './pages/Landing';
+import Login from './pages/Login';
+import { SignUp } from './pages/SignUp';
+import Pricing from './pages/Pricing';
 import SalesPage from './pages/SalesPage';
 import Dashboard from './pages/Dashboard';
-import ConsultantPage from './pages/ConsultantPage';
-import InterpreterPage from './pages/InterpreterPage';
-import SupplyChainPage from './pages/SupplyChainPage';
-import AccountantGuidePage from './pages/AccountantGuidePage';
-import ActionGuidePage from './pages/ActionGuidePage';
-import OnboardingPage from './pages/OnboardingPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import Consultant from './pages/Consultant';
+import Interpreter from './pages/Interpreter';
+import SupplyChain from './pages/SupplyChain';
+import AccountantGuide from './pages/AccountantGuide';
+import ActionGuide from './pages/ActionGuide';
+import Onboarding from './pages/Onboarding';
+import ForgotPassword from './pages/ForgotPassword';
 
 // Components
 import Sidebar from './components/Sidebar';
@@ -83,10 +83,8 @@ const App: React.FC = () => {
     if (loading) return;
 
     if (session) {
-      // Usuário autenticado — verificar se está numa página pública
       const isPublicPage = ['landing', 'login', 'signup', 'pricing', 'sales'].includes(currentPage);
       if (isPublicPage) {
-        // Redirecionar para dashboard
         setCurrentPage('dashboard');
       }
     }
@@ -117,42 +115,26 @@ const App: React.FC = () => {
     const motorTimer = setTimeout(() => {
       const hasDismissedMotor = localStorage.getItem('taxreform_motor_dismissed');
       if (!hasDismissedMotor) setShowMotorPopup(true);
-    }, 180_000); // 3 minutos
+    }, 180_000);
 
     return () => clearTimeout(motorTimer);
   }, [currentPage, session]);
 
   // ─── Handlers de navegação ────────────────────────────────
 
-  /**
-   * Chamado pela PricingPage quando usuário seleciona um plano.
-   * - Se 'free': vai direto para signup sem passar por Kiwify
-   * - Se pago: vai para signup (Kiwify processa após cadastro)
-   */
   const handlePlanSelect = (planId: PlanId) => {
     setSelectedPlanId(planId);
     setCurrentPage('signup');
   };
 
-  /**
-   * Chamado pela SignUpPage após cadastro bem-sucedido.
-   * - Se plano free: entra direto na plataforma (onboarding)
-   * - Se plano pago: redireciona para Kiwify
-   */
   const handleSignUpSuccess = (planId: PlanId) => {
     if (planId === 'free') {
-      // ✅ CORREÇÃO PRINCIPAL: free entra direto, não volta para pricing
       setCurrentPage('onboarding');
     } else {
-      // Pago: redirecionar para Kiwify (a SignUpPage já deve abrir a URL)
-      // Após retorno (webhook confirma), usuário faz login e cai no dashboard
       setCurrentPage('login');
     }
   };
 
-  /**
-   * Chamado pela OnboardingPage quando usuário conclui onboarding.
-   */
   const handleOnboardingComplete = () => {
     setCurrentPage('dashboard');
   };
@@ -178,52 +160,27 @@ const App: React.FC = () => {
   const renderPublicPage = () => {
     switch (currentPage) {
       case 'landing':
-        return (
-          <LandingPage
-            onNavigate={navigate}
-            onPlanSelect={handlePlanSelect}
-          />
-        );
+        return <Landing onNavigate={navigate} onPlanSelect={handlePlanSelect} />;
       case 'login':
-        return (
-          <LoginPage
-            onNavigate={navigate}
-            onLoginSuccess={() => navigate('dashboard')}
-          />
-        );
+        return <Login onNavigate={navigate} onLoginSuccess={() => navigate('dashboard')} />;
       case 'signup':
         return (
-          <SignUpPage
+          <SignUp
             selectedPlanId={selectedPlanId}
             onNavigate={navigate}
             onSignUpSuccess={handleSignUpSuccess}
           />
         );
       case 'pricing':
-        return (
-          <PricingPage
-            onNavigate={navigate}
-            onPlanSelect={handlePlanSelect}
-          />
-        );
+        return <Pricing onNavigate={navigate} onPlanSelect={handlePlanSelect} />;
       case 'sales':
         return <SalesPage onNavigate={navigate} />;
       case 'forgot-password':
-        return <ForgotPasswordPage onNavigate={navigate} />;
+        return <ForgotPassword onNavigate={navigate} />;
       case 'onboarding':
-        return (
-          <OnboardingPage
-            onComplete={handleOnboardingComplete}
-            onNavigate={navigate}
-          />
-        );
+        return <Onboarding onComplete={handleOnboardingComplete} onNavigate={navigate} />;
       default:
-        return (
-          <LandingPage
-            onNavigate={navigate}
-            onPlanSelect={handlePlanSelect}
-          />
-        );
+        return <Landing onNavigate={navigate} onPlanSelect={handlePlanSelect} />;
     }
   };
 
@@ -233,15 +190,15 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard onNavigate={navigate} session={session} />;
       case 'consultant':
-        return <ConsultantPage onNavigate={navigate} session={session} />;
+        return <Consultant onNavigate={navigate} session={session} />;
       case 'interpreter':
-        return <InterpreterPage onNavigate={navigate} session={session} />;
+        return <Interpreter onNavigate={navigate} session={session} />;
       case 'supply-chain':
-        return <SupplyChainPage onNavigate={navigate} session={session} />;
+        return <SupplyChain onNavigate={navigate} session={session} />;
       case 'accountant-guide':
-        return <AccountantGuidePage onNavigate={navigate} session={session} />;
+        return <AccountantGuide onNavigate={navigate} session={session} />;
       case 'action-guide':
-        return <ActionGuidePage onNavigate={navigate} session={session} />;
+        return <ActionGuide onNavigate={navigate} session={session} />;
       default:
         return <Dashboard onNavigate={navigate} session={session} />;
     }
