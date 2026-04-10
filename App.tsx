@@ -26,7 +26,7 @@ import { MotorTributarioPopup } from './components/MotorTributarioPopup';
 import { UpsellPopup } from './components/UpsellPopup';
 
 // ─── Email do administrador ───────────────────────────────────────────────────
-const ADMIN_EMAIL = 'rogerio@arg4.com.br'; // ← altere para o seu email real
+const ADMIN_EMAIL = 'tmwaltz@gmail.com'; // ← altere para o seu email real
 
 export type PageType =
   | 'landing'
@@ -251,10 +251,6 @@ const App: React.FC = () => {
           onNavigateToProfile={() => {}}
           onNavigateHome={() => navigate('dashboard')}
           onNavigateToAdmin={isAdmin ? () => navigate('admin') : undefined}
-          onLogout={async () => {
-            await supabase.auth.signOut();
-            navigate('landing');
-          }}
         />
         <main className="flex-1 overflow-auto">
           {renderPlatformPage()}

@@ -3,7 +3,7 @@ import { UserRole } from '../types';
 import { Home, Maximize, Minimize, ShieldCheck, LogOut } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
-const ADMIN_EMAIL = 'rogerio@arg4.com.br';
+const ADMIN_EMAIL = 'tmwaltz@gmail.com';
 
 interface HeaderProps {
   userRole: UserRole;
