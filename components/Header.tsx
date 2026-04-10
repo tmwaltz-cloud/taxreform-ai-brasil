@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole } from '../types';
-import { UserCircle, Bell, Home, X, Info, Maximize, Minimize, ShieldCheck } from 'lucide-react';
+import { Home, Maximize, Minimize, ShieldCheck, LogOut } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
-// ─── Email do administrador ───────────────────────────────────────────────────
-// Altere para o seu email real
 const ADMIN_EMAIL = 'rogerio@arg4.com.br';
 
 interface HeaderProps {
@@ -12,7 +10,8 @@ interface HeaderProps {
   onRoleChange: (role: UserRole) => void;
   onNavigateToProfile: () => void;
   onNavigateHome: () => void;
-  onNavigateToAdmin?: () => void; // opcional — só aparece para admin
+  onNavigateToAdmin?: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,12 +20,12 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateToProfile,
   onNavigateHome,
   onNavigateToAdmin,
+  onLogout,
 }) => {
-  const [showNotifications, setShowNotifications] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  // ── Verificar se usuário logado é admin ───────────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
@@ -35,11 +34,8 @@ export const Header: React.FC<HeaderProps> = ({
     });
   }, []);
 
-  // ── Fullscreen ────────────────────────────────────────────
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
@@ -52,10 +48,16 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await supabase.auth.signOut();
+    setLoggingOut(false);
+    onLogout?.();
+  };
+
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shadow-sm relative z-20">
       <div className="flex items-center gap-4">
-        {/* Home */}
         <button
           onClick={onNavigateHome}
           className="p-2 text-slate-500 hover:bg-slate-100 hover:text-brand-600 rounded-full transition"
@@ -63,7 +65,6 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Home className="w-5 h-5" />
         </button>
-
         <h2 className="text-xl font-semibold text-slate-800 hidden md:block">
           Plataforma de Inteligência Tributária
         </h2>
@@ -72,8 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
         </h2>
       </div>
 
-      <div className="flex items-center space-x-2 md:space-x-4">
-        {/* Fullscreen */}
+      <div className="flex items-center space-x-2 md:space-x-3">
         <button
           onClick={toggleFullScreen}
           className="p-2 text-slate-500 hover:text-brand-600 transition hover:bg-slate-100 rounded-full focus:outline-none hidden md:block"
@@ -82,7 +82,6 @@ export const Header: React.FC<HeaderProps> = ({
           {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
         </button>
 
-        {/* Botão Admin — visível APENAS para o administrador */}
         {isAdmin && onNavigateToAdmin && (
           <button
             onClick={onNavigateToAdmin}
@@ -93,6 +92,16 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline">Admin</span>
           </button>
         )}
+
+        <button
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-600 text-slate-500 text-xs font-semibold transition disabled:opacity-50"
+          title="Sair da plataforma"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="hidden sm:inline">{loggingOut ? 'Saindo...' : 'Sair'}</span>
+        </button>
       </div>
     </header>
   );
