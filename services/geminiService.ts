@@ -13,12 +13,12 @@ try {
   console.error("Failed to initialize GoogleGenAI", e);
 }
 
-// ─── Modelos com fallback em cascata ─────────────────────────────────────────
-// Tenta o mais capaz primeiro; se der 503, cai para o próximo
+// ─── Modelos disponíveis (abril 2026) ────────────────────────────────────────
+// gemini-1.5 e gemini-2.0 foram desligados para novos projetos
+// Usar apenas família 2.5 com retry por sobrecarga (503)
 const MODELS = [
-  'gemini-2.5-flash',   // 1º — mais capaz, mas sobrecarregado
-  'gemini-2.0-flash',   // 2º — estável e rápido
-  'gemini-1.5-flash',   // 3º — fallback final garantido
+  'gemini-2.5-flash',      // 1º — principal (pode dar 503 em picos)
+  'gemini-2.5-flash-lite', // 2º — mais leve, menos sobrecarregado
 ];
 
 // ─── System Instructions ──────────────────────────────────────────────────────
@@ -118,8 +118,8 @@ function is503(error: any): boolean {
  */
 async function withModelFallback<T>(
   fn: (model: string) => Promise<T>,
-  retriesPerModel = 2,
-  baseDelay = 2000
+  retriesPerModel = 3,   // 3 tentativas por modelo (era 2)
+  baseDelay = 3000       // 3s, 6s, 9s (era 2s)
 ): Promise<T> {
   let lastError: any;
 
