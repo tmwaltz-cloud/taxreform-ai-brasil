@@ -338,11 +338,10 @@ const TabMetrics: React.FC = () => {
         const active = data.filter(u => ['active', 'trialing'].includes(u.plan_status)).length;
         const suspended = data.filter(u => u.plan_status === 'suspended').length;
 
-        // Agrupar cadastros reais por data (todos os dados)
+        // Cadastros por dia — últimos 21 dias
         const countByDate: Record<string, number> = {};
         data.forEach(u => {
           if (!u.created_at) return;
-          // Converter para data local no formato YYYY-MM-DD
           const d = new Date(u.created_at);
           const dateKey = d.getFullYear() + '-' +
             String(d.getMonth() + 1).padStart(2, '0') + '-' +
@@ -350,18 +349,9 @@ const TabMetrics: React.FC = () => {
           countByDate[dateKey] = (countByDate[dateKey] || 0) + 1;
         });
 
-        // Gerar eixo X: do cadastro mais antigo até hoje
-        const allDates = Object.keys(countByDate).sort();
-        const startDate = allDates.length > 0
-          ? new Date(allDates[0])
-          : (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d; })();
-        const today = new Date();
-        const daysDiff = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        const daysToShow = Math.max(daysDiff, 14);
-
-        const recentSignups = Array.from({ length: daysToShow }, (_, i) => {
-          const d = new Date(startDate);
-          d.setDate(startDate.getDate() + i);
+        const recentSignups = Array.from({ length: 21 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (20 - i));
           const dateKey = d.getFullYear() + '-' +
             String(d.getMonth() + 1).padStart(2, '0') + '-' +
             String(d.getDate()).padStart(2, '0');
@@ -415,7 +405,7 @@ const TabMetrics: React.FC = () => {
       {/* Gráfico de cadastros */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <h3 className="text-sm font-semibold text-gray-300 mb-4">
-          📈 Cadastros — últimos 14 dias
+          📈 Cadastros — últimos 21 dias
         </h3>
         <div className="flex items-end gap-1 h-32">
           {metrics.recentSignups.map(day => (
