@@ -2,27 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
 
-// Pages — nomes reais dos arquivos em src/pages/
-import Landing from './pages/Landing';
-import Login from './pages/Login';
+// Pages — todos com export nomeado
+import { Landing } from './pages/Landing';
+import { Login } from './pages/Login';
 import { SignUp } from './pages/SignUp';
-import Pricing from './pages/Pricing';
-import SalesPage from './pages/SalesPage';
-import Dashboard from './pages/Dashboard';
-import Consultant from './pages/Consultant';
-import Interpreter from './pages/Interpreter';
-import SupplyChain from './pages/SupplyChain';
-import AccountantGuide from './pages/AccountantGuide';
-import ActionGuide from './pages/ActionGuide';
-import Onboarding from './pages/Onboarding';
-import ForgotPassword from './pages/ForgotPassword';
+import { Pricing } from './pages/Pricing';
+import { SalesPage } from './pages/SalesPage';
+import { Dashboard } from './pages/Dashboard';
+import { Consultant } from './pages/Consultant';
+import { Interpreter } from './pages/Interpreter';
+import { SupplyChain } from './pages/SupplyChain';
+import { AccountantGuide } from './pages/AccountantGuide';
+import { ActionGuide } from './pages/ActionGuide';
+import { Onboarding } from './pages/Onboarding';
+import { ForgotPassword } from './pages/ForgotPassword';
 
-// Components
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
-import StartupPopup from './components/StartupPopup';
-import MotorTributarioPopup from './components/MotorTributarioPopup';
-import UpsellPopup from './components/UpsellPopup';
+// Components — mix de export default e nomeados
+import Sidebar from './components/Sidebar';                          // export default
+import { Header } from './components/Header';                        // export const
+import { StartupPopup } from './components/StartupPopup';            // export const
+import { MotorTributarioPopup } from './components/MotorTributarioPopup'; // export function
+import { UpsellPopup } from './components/UpsellPopup';              // export function
 
 export type PageType =
   | 'landing'
@@ -69,9 +69,7 @@ const App: React.FC = () => {
       setLoading(false);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
@@ -81,12 +79,9 @@ const App: React.FC = () => {
   // ─── Rota inicial após auth ───────────────────────────────
   useEffect(() => {
     if (loading) return;
-
     if (session) {
       const isPublicPage = ['landing', 'login', 'signup', 'pricing', 'sales'].includes(currentPage);
-      if (isPublicPage) {
-        setCurrentPage('dashboard');
-      }
+      if (isPublicPage) setCurrentPage('dashboard');
     }
   }, [session, loading]);
 
@@ -94,7 +89,6 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!session || !PLATFORM_PAGES.includes(currentPage)) return;
 
-    // Popup de boas-vindas (1º acesso)
     const hasSeenStartup = localStorage.getItem('taxreform_startup_seen');
     if (!hasSeenStartup) {
       setShowStartupPopup(true);
@@ -102,7 +96,6 @@ const App: React.FC = () => {
       return;
     }
 
-    // Popup upsell freemium (2º acesso, plano free)
     const accessCount = parseInt(localStorage.getItem('taxreform_access_count') || '0') + 1;
     localStorage.setItem('taxreform_access_count', String(accessCount));
 
@@ -111,16 +104,20 @@ const App: React.FC = () => {
       return;
     }
 
-    // Motor Tributário popup (após 3 min na plataforma)
     const motorTimer = setTimeout(() => {
-      const hasDismissedMotor = localStorage.getItem('taxreform_motor_dismissed');
-      if (!hasDismissedMotor) setShowMotorPopup(true);
+      if (!localStorage.getItem('taxreform_motor_dismissed')) {
+        setShowMotorPopup(true);
+      }
     }, 180_000);
 
     return () => clearTimeout(motorTimer);
   }, [currentPage, session]);
 
-  // ─── Handlers de navegação ────────────────────────────────
+  // ─── Navegação ────────────────────────────────────────────
+  const navigate = (page: PageType) => {
+    setCurrentPage(page);
+    setSidebarOpen(false);
+  };
 
   const handlePlanSelect = (planId: PlanId) => {
     setSelectedPlanId(planId);
@@ -139,10 +136,8 @@ const App: React.FC = () => {
     setCurrentPage('dashboard');
   };
 
-  const navigate = (page: PageType) => {
-    setCurrentPage(page);
-    setSidebarOpen(false);
-  };
+  const userRole = session?.user?.user_metadata?.role;
+  const userPhone = session?.user?.user_metadata?.phone ?? '';
 
   // ─── Loading splash ───────────────────────────────────────
   if (loading) {
@@ -156,13 +151,16 @@ const App: React.FC = () => {
     );
   }
 
-  // ─── Páginas públicas (sem sidebar) ──────────────────────
-  const renderPublicPage = () => {
+  // ─── Sem sessão → páginas públicas ───────────────────────
+  if (!session) {
     switch (currentPage) {
-      case 'landing':
-        return <Landing onNavigate={navigate} onPlanSelect={handlePlanSelect} />;
       case 'login':
-        return <Login onNavigate={navigate} onLoginSuccess={() => navigate('dashboard')} />;
+        return (
+          <Login
+            onLogin={() => navigate('dashboard')}
+            onNavigate={navigate}
+          />
+        );
       case 'signup':
         return (
           <SignUp
@@ -172,44 +170,81 @@ const App: React.FC = () => {
           />
         );
       case 'pricing':
-        return <Pricing onNavigate={navigate} onPlanSelect={handlePlanSelect} />;
+        return (
+          <Pricing
+            onNavigate={navigate}
+            userData={null}
+          />
+        );
       case 'sales':
-        return <SalesPage onNavigate={navigate} />;
+        return (
+          <SalesPage
+            onBack={() => navigate('landing')}
+            onBuy={() => navigate('pricing')}
+          />
+        );
       case 'forgot-password':
         return <ForgotPassword onNavigate={navigate} />;
       case 'onboarding':
-        return <Onboarding onComplete={handleOnboardingComplete} onNavigate={navigate} />;
+        return (
+          <Onboarding
+            onComplete={handleOnboardingComplete}
+            onLearnMore={() => navigate('pricing')}
+          />
+        );
       default:
-        return <Landing onNavigate={navigate} onPlanSelect={handlePlanSelect} />;
+        return (
+          <Landing
+            onEnter={() => navigate('login')}
+            onStartOnboarding={() => navigate('signup')}
+          />
+        );
     }
-  };
-
-  // ─── Páginas da plataforma (com sidebar + header) ─────────
-  const renderPlatformPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard onNavigate={navigate} session={session} />;
-      case 'consultant':
-        return <Consultant onNavigate={navigate} session={session} />;
-      case 'interpreter':
-        return <Interpreter onNavigate={navigate} session={session} />;
-      case 'supply-chain':
-        return <SupplyChain onNavigate={navigate} session={session} />;
-      case 'accountant-guide':
-        return <AccountantGuide onNavigate={navigate} session={session} />;
-      case 'action-guide':
-        return <ActionGuide onNavigate={navigate} session={session} />;
-      default:
-        return <Dashboard onNavigate={navigate} session={session} />;
-    }
-  };
-
-  // ─── Sem sessão → páginas públicas ───────────────────────
-  if (!session) {
-    return renderPublicPage();
   }
 
-  // ─── Com sessão → layout da plataforma ───────────────────
+  // ─── Com sessão → páginas da plataforma ──────────────────
+  const renderPlatformPage = () => {
+    switch (currentPage) {
+      case 'consultant':
+        return (
+          <Consultant
+            userRole={userRole}
+            onNavigateHome={() => navigate('dashboard')}
+          />
+        );
+      case 'interpreter':
+        return (
+          <Interpreter
+            userRole={userRole}
+            onNavigateHome={() => navigate('dashboard')}
+          />
+        );
+      case 'supply-chain':
+        return <SupplyChain onNavigateHome={() => navigate('dashboard')} />;
+      case 'accountant-guide':
+        return <AccountantGuide onNavigateHome={() => navigate('dashboard')} />;
+      case 'action-guide':
+        return (
+          <ActionGuide
+            actionId=""
+            actionTitle=""
+            onNavigateHome={() => navigate('dashboard')}
+            onNavigateToInterpreter={() => navigate('interpreter')}
+          />
+        );
+      case 'dashboard':
+      default:
+        return (
+          <Dashboard
+            userRole={userRole}
+            onViewChange={(view: any) => navigate(view as PageType)}
+            onActionSelect={() => navigate('action-guide')}
+          />
+        );
+    }
+  };
+
+  // ─── Layout da plataforma (com sidebar + header) ─────────
   return (
     <div className="flex h-screen bg-gray-950 overflow-hidden">
       {/* Overlay mobile */}
@@ -220,7 +255,7 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — export default, props do Sidebar.tsx */}
       <Sidebar
         currentPage={currentPage}
         onNavigate={navigate}
@@ -232,14 +267,12 @@ const App: React.FC = () => {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header — props reais: userRole, onRoleChange, onNavigateToProfile, onNavigateHome */}
         <Header
-          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-          onNavigate={navigate}
-          session={session}
-          onLogout={async () => {
-            await supabase.auth.signOut();
-            navigate('landing');
-          }}
+          userRole={userRole}
+          onRoleChange={() => {}}
+          onNavigateToProfile={() => {}}
+          onNavigateHome={() => navigate('dashboard')}
         />
         <main className="flex-1 overflow-auto">
           {renderPlatformPage()}
@@ -250,11 +283,11 @@ const App: React.FC = () => {
       {showStartupPopup && (
         <StartupPopup
           onClose={() => setShowStartupPopup(false)}
-          onNavigate={navigate}
         />
       )}
       {showMotorPopup && (
         <MotorTributarioPopup
+          userPhone={userPhone}
           onClose={() => {
             setShowMotorPopup(false);
             localStorage.setItem('taxreform_motor_dismissed', 'true');
@@ -264,10 +297,6 @@ const App: React.FC = () => {
       {showUpsellPopup && (
         <UpsellPopup
           onClose={() => setShowUpsellPopup(false)}
-          onUpgrade={() => {
-            setShowUpsellPopup(false);
-            navigate('pricing');
-          }}
         />
       )}
     </div>
