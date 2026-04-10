@@ -225,19 +225,23 @@ export const fetchReformTimeline = async (): Promise<TimelineItem[]> => {
 const newsCache: { data: NewsItem[] | null; timestamp: number } = { data: null, timestamp: 0 };
 const NEWS_CACHE_DURATION_MS = 1000 * 60 * 15; // 15 minutos
 
-export const fetchTaxNews = async (): Promise<NewsItem[]> => {
+export const fetchTaxNews = async (userRole?: UserRole, topic?: string): Promise<NewsItem[]> => {
   const now = Date.now();
-  if (newsCache.data && now - newsCache.timestamp < NEWS_CACHE_DURATION_MS) {
+  if (!topic && newsCache.data && now - newsCache.timestamp < NEWS_CACHE_DURATION_MS) {
     return newsCache.data;
   }
   checkRateLimit('news');
 
   const currentDate = new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const roleContext = userRole ? `Perfil do usuário: ${userRole}. Adapte a relevância das notícias.` : '';
+  const topicFilter = topic ? `Filtre as notícias pelo tema: ${topic}.` : '';
 
   const prompt = `
     DATA ATUAL: ${currentDate}
     Você é analista tributário. Busque as últimas notícias sobre Reforma Tributária Brasileira.
-    Retorne APENAS JSON: array de objetos com: id (string), title, summary, source, date, category, urgency (low|medium|high), url (se disponível).
+    ${roleContext}
+    ${topicFilter}
+    Retorne APENAS JSON: array de objetos com: id (string), title, summary, source, date, category, urgency (low|medium|high), impactLevel (Alto|Médio|Baixo), url (se disponível).
     Máximo 8 itens. Foque em: IBS, CBS, LC 214/2025, Split Payment, Simples Nacional, CGIBS.
   `;
 
