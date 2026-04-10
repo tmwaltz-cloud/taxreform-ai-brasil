@@ -16,13 +16,17 @@ import { AccountantGuide } from './pages/AccountantGuide';
 import { ActionGuide } from './pages/ActionGuide';
 import { Onboarding } from './pages/Onboarding';
 import { ForgotPassword } from './pages/ForgotPassword';
+import { Admin } from './pages/Admin';
 
-// Components — mix de export default e nomeados
-import Sidebar from './components/Sidebar';                          // export default
-import { Header } from './components/Header';                        // export const
-import { StartupPopup } from './components/StartupPopup';            // export const
-import { MotorTributarioPopup } from './components/MotorTributarioPopup'; // export function
-import { UpsellPopup } from './components/UpsellPopup';              // export function
+// Components
+import Sidebar from './components/Sidebar';
+import { Header } from './components/Header';
+import { StartupPopup } from './components/StartupPopup';
+import { MotorTributarioPopup } from './components/MotorTributarioPopup';
+import { UpsellPopup } from './components/UpsellPopup';
+
+// ─── Email do administrador ───────────────────────────────────────────────────
+const ADMIN_EMAIL = 'rogerio@arg4.com.br'; // ← altere para o seu email real
 
 export type PageType =
   | 'landing'
@@ -37,7 +41,8 @@ export type PageType =
   | 'interpreter'
   | 'supply-chain'
   | 'accountant-guide'
-  | 'action-guide';
+  | 'action-guide'
+  | 'admin';
 
 export type PlanId = 'free' | 'monthly' | 'lifetime';
 
@@ -138,6 +143,7 @@ const App: React.FC = () => {
 
   const userRole = session?.user?.user_metadata?.role;
   const userPhone = session?.user?.user_metadata?.phone ?? '';
+  const isAdmin = session?.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   // ─── Loading splash ───────────────────────────────────────
   if (loading) {
@@ -155,12 +161,7 @@ const App: React.FC = () => {
   if (!session) {
     switch (currentPage) {
       case 'login':
-        return (
-          <Login
-            onLogin={() => navigate('dashboard')}
-            onNavigate={navigate}
-          />
-        );
+        return <Login onLogin={() => navigate('dashboard')} onNavigate={navigate} />;
       case 'signup':
         return (
           <SignUp
@@ -170,55 +171,35 @@ const App: React.FC = () => {
           />
         );
       case 'pricing':
-        return (
-          <Pricing
-            onNavigate={navigate}
-            userData={null}
-          />
-        );
+        return <Pricing onNavigate={navigate} userData={null} />;
       case 'sales':
-        return (
-          <SalesPage
-            onBack={() => navigate('landing')}
-            onBuy={() => navigate('pricing')}
-          />
-        );
+        return <SalesPage onBack={() => navigate('landing')} onBuy={() => navigate('pricing')} />;
       case 'forgot-password':
         return <ForgotPassword onNavigate={navigate} />;
       case 'onboarding':
-        return (
-          <Onboarding
-            onComplete={handleOnboardingComplete}
-            onLearnMore={() => navigate('pricing')}
-          />
-        );
+        return <Onboarding onComplete={handleOnboardingComplete} onLearnMore={() => navigate('pricing')} />;
       default:
-        return (
-          <Landing
-            onEnter={() => navigate('login')}
-            onStartOnboarding={() => navigate('signup')}
-          />
-        );
+        return <Landing onEnter={() => navigate('login')} onStartOnboarding={() => navigate('signup')} />;
     }
   }
 
-  // ─── Com sessão → páginas da plataforma ──────────────────
+  // ─── Painel Admin (tela cheia, sem sidebar) ───────────────
+  if (currentPage === 'admin') {
+    if (!isAdmin) {
+      // Segurança: redireciona se não for admin
+      navigate('dashboard');
+      return null;
+    }
+    return <Admin onBack={() => navigate('dashboard')} />;
+  }
+
+  // ─── Páginas da plataforma ────────────────────────────────
   const renderPlatformPage = () => {
     switch (currentPage) {
       case 'consultant':
-        return (
-          <Consultant
-            userRole={userRole}
-            onNavigateHome={() => navigate('dashboard')}
-          />
-        );
+        return <Consultant userRole={userRole} onNavigateHome={() => navigate('dashboard')} />;
       case 'interpreter':
-        return (
-          <Interpreter
-            userRole={userRole}
-            onNavigateHome={() => navigate('dashboard')}
-          />
-        );
+        return <Interpreter userRole={userRole} onNavigateHome={() => navigate('dashboard')} />;
       case 'supply-chain':
         return <SupplyChain onNavigateHome={() => navigate('dashboard')} />;
       case 'accountant-guide':
@@ -244,10 +225,9 @@ const App: React.FC = () => {
     }
   };
 
-  // ─── Layout da plataforma (com sidebar + header) ─────────
+  // ─── Layout com sidebar + header ─────────────────────────
   return (
     <div className="flex h-screen bg-gray-950 overflow-hidden">
-      {/* Overlay mobile */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/60 z-20 lg:hidden"
@@ -255,7 +235,6 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Sidebar — export default, props do Sidebar.tsx */}
       <Sidebar
         currentPage={currentPage}
         onNavigate={navigate}
@@ -265,25 +244,21 @@ const App: React.FC = () => {
         session={session}
       />
 
-      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header — props reais: userRole, onRoleChange, onNavigateToProfile, onNavigateHome */}
         <Header
           userRole={userRole}
           onRoleChange={() => {}}
           onNavigateToProfile={() => {}}
           onNavigateHome={() => navigate('dashboard')}
+          onNavigateToAdmin={isAdmin ? () => navigate('admin') : undefined}
         />
         <main className="flex-1 overflow-auto">
           {renderPlatformPage()}
         </main>
       </div>
 
-      {/* Popups */}
       {showStartupPopup && (
-        <StartupPopup
-          onClose={() => setShowStartupPopup(false)}
-        />
+        <StartupPopup onClose={() => setShowStartupPopup(false)} />
       )}
       {showMotorPopup && (
         <MotorTributarioPopup
