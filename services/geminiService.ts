@@ -270,101 +270,197 @@ export const fetchTaxNews = async (userRole?: UserRole, topic?: string): Promise
 
 // ─── Supply Chain ─────────────────────────────────────────────────────────────
 
-// ─── Simulador Estratégico IVA — Motor de cálculo local ─────────────────────
-// Base legal: LC 214/2025 (CBS 8,8% | IBS 17,7% | IVA Dual ref. 26,5%)
-// PIS/COFINS LP: 3,65% | LR: 9,25% | SN: ~3,5% (LC 123/2006)
-// Crédito Simples Nacional: ~20% do IVA (LC 214/2025 regime híbrido)
+// ─── Simulador Estratégico IVA — baseado na Calculadora de Fluxo de Caixa ────
+// Lógica derivada da planilha fluxo_caixa_reforma_tributaria_CORRIGIDO.xlsx
+// Base legal: LC 214/2025 | EC 132/2023 | Lei 9.718/98 | Lei 10.637/02 | Lei 10.833/03
+//
+// Alíquotas (LC 214/2025 art.12 e art.15):
+//   CBS: 8,8% (fixada) | IBS: 17,7% (referência MF) | IVA Dual: 26,5%
+//   CBS fase-teste 2026: 0,9% + IBS 0,1% (art.340)
+// Alíquotas atuais:
+//   Lucro Real:      PIS 1,65% + COFINS 7,60% = 9,25% (não-cumulativo)
+//   Lucro Presumido: PIS 0,65% + COFINS 3,00% = 3,65% (cumulativo)
+//   Simples Nacional: embutido DAS ~3,5%
+// Crédito Simples Nacional pós-reforma: ~20% do IVA (LC 214/2025 regime híbrido)
 
 export const simuladorEstrategicoIva = (input: SupplyChainInput, futureRegime?: string) => {
   const regimeFuturo = futureRegime || input.companyRegime;
 
-  // Alíquotas IVA Dual (referência MF — LC 214/2025)
-  const aliq_iva      = 0.265;
-  const fator_simples = 0.20;  // crédito reduzido SN (~20%)
+  // ── Alíquotas IVA Dual (LC 214/2025) ─────────────────────────────────────
+  const aliq_cbs       = 0.088;   // CBS fixada (art.12)
+  const aliq_ibs       = 0.177;   // IBS referência MF (art.15)
+  const aliq_iva       = aliq_cbs + aliq_ibs;  // 26,5%
+  const fator_simples  = 0.20;    // crédito reduzido SN (~20%)
+  const fator_hibrido  = 1.00;    // Simples Dual gera crédito integral
 
-  // Alíquotas PIS/COFINS atuais por regime
-  const aliq_pis_cofins_presumido = 0.0365; // LP cumulativo (Lei 9.718/98)
-  const aliq_pis_cofins_real      = 0.0925; // LR não-cumulativo (Lei 10.637+10.833)
-  const aliq_pis_cofins_simples   = 0.0350; // SN embutido DAS (LC 123/2006)
+  // ── Alíquotas PIS/COFINS regime atual ────────────────────────────────────
+  // Lucro Real: PIS 1,65% + COFINS 7,60% (Lei 10.637/02 + 10.833/03)
+  // Lucro Presumido: PIS 0,65% + COFINS 3,00% (Lei 9.718/98)
+  // Simples Nacional: ~3,5% embutido DAS (LC 123/2006)
+  const aliq_lr   = 0.0165 + 0.076;   // 9,25%
+  const aliq_lp   = 0.0065 + 0.030;   // 3,65%
+  const aliq_sn   = 0.035;            // ~3,5% médio
+  const aliq_icms = 0.05;             // ICMS/ISS médio estimado
 
-  const getAliqAtual = (regime: string): number => {
-    if (regime.includes('Lucro Real'))  return aliq_pis_cofins_real;
-    if (regime.includes('Simples'))     return aliq_pis_cofins_simples;
-    return aliq_pis_cofins_presumido;
+  const getAliqPisCofins = (regime: string): number => {
+    if (regime.includes('Lucro Real'))  return aliq_lr;
+    if (regime.includes('Simples'))     return aliq_sn;
+    return aliq_lp;
   };
 
+  // Fator de crédito IVA por regime do fornecedor (pós-reforma)
   const getCreditoFator = (regime: string): number => {
-    if (regime.includes('Simples Dual') || regime.includes('Híbrido')) return 1.0;
+    if (regime.includes('Simples Dual') || regime.includes('Híbrido')) return fator_hibrido;
     if (regime.includes('Simples Nacional')) return fator_simples;
-    return 1.0; // LP e LR — crédito integral
+    return 1.0;
   };
 
-  // Valores base da cadeia (exemplificativos)
-  const venda_forn   = 1000.00;
-  const venda_emp    = 1500.00;
-  const venda_cli    = 2000.00;
-  const margem       = 0.3375;
+  // ── Valores base da cadeia (escalonados: 1.000 → 1.500 → 2.000) ──────────
+  // Representa: Fornecedor vende por 1.000 | Empresa revende por 1.500 | Cliente paga 2.000
+  const vForn = 1_000.00;
+  const vEmp  = 1_500.00;
+  const vCli  = 2_000.00;
+  const margem = (vEmp - vForn) / vForn; // markup ~50%
 
-  // Alíquotas atuais
-  const aliq_atual_forn  = getAliqAtual(input.supplierRegime);
-  const aliq_atual_emp   = getAliqAtual(input.companyRegime);
-  const aliq_atual_fut   = getAliqAtual(regimeFuturo);
+  const aliq_atual_forn = getAliqPisCofins(input.supplierRegime);
+  const aliq_atual_emp  = getAliqPisCofins(input.companyRegime);
+  const aliq_atual_fut  = getAliqPisCofins(regimeFuturo);
 
-  // Imposto atual empresa
-  const imp_atual_emp = +(venda_emp * aliq_atual_emp).toFixed(2);
+  // ── CENÁRIO ATUAL ─────────────────────────────────────────────────────────
+  // Débitos sobre vendas
+  const pis_cofins_forn = +(vForn * aliq_atual_forn).toFixed(2);
+  const icms_forn       = +(vForn * aliq_icms).toFixed(2);
+  const pis_cofins_emp  = +(vEmp  * aliq_atual_emp).toFixed(2);
+  const icms_emp        = +(vEmp  * aliq_icms).toFixed(2);
+  const pis_cofins_cli  = +(vCli  * aliq_atual_fut).toFixed(2);
+  const icms_cli        = +(vCli  * aliq_icms).toFixed(2);
 
-  // Crédito atual (LR tem crédito; LP/SN não)
-  const credito_atual = input.companyRegime.includes('Lucro Real')
-    ? +(venda_forn * aliq_pis_cofins_real).toFixed(2) : 0;
-  const custo_liq_atual = +(venda_forn - credito_atual).toFixed(2);
-  const preco_atual = +(custo_liq_atual * (1 + margem) * (1 + aliq_atual_emp)).toFixed(2);
+  // Créditos recebidos (somente Lucro Real tem crédito PIS/COFINS na entrada)
+  // % compras c/ crédito PIS/COFINS: 70% (parâmetro planilha)
+  // % compras c/ crédito ICMS: 50%
+  const perc_cred_pis = input.companyRegime.includes('Lucro Real') ? 0.70 : 0;
+  const perc_cred_icms = 0.50;
 
-  // Crédito IVA entrada (pós-reforma)
-  const cred_fator_forn = getCreditoFator(input.supplierRegime);
-  const cred_fator_fut  = getCreditoFator(regimeFuturo);
-  const credito_iva_entrada = +(venda_forn * aliq_iva * cred_fator_forn).toFixed(2);
-  const custo_liq_reforma   = +(venda_forn - credito_iva_entrada).toFixed(2);
-  const iva_debito_saida    = +(venda_emp * aliq_iva).toFixed(2);
-  const iva_liq_empresa     = +(iva_debito_saida - credito_iva_entrada).toFixed(2);
-  const preco_reforma       = +(custo_liq_reforma * (1 + margem) * (1 + aliq_iva * cred_fator_fut)).toFixed(2);
+  const cred_pis_emp  = +(vForn * perc_cred_pis * aliq_atual_forn).toFixed(2);
+  const cred_icms_emp = +(vForn * perc_cred_icms * aliq_icms).toFixed(2);
 
-  // Delta imposto a pagar
-  const diff_imposto_pago = +(iva_liq_empresa - imp_atual_emp).toFixed(2);
+  const trib_liq_forn = +(pis_cofins_forn + icms_forn).toFixed(2);
+  const trib_liq_emp  = +(pis_cofins_emp + icms_emp - cred_pis_emp - cred_icms_emp).toFixed(2);
+  const trib_liq_cli  = +(pis_cofins_cli + icms_cli).toFixed(2);
 
-  // Simulação conceitual — ARRAY de rows para tabela DRE
+  // ── PÓS-REFORMA 2027 (IVA Dual CBS+IBS) ──────────────────────────────────
+  // % compras c/ crédito IBS/CBS: 85% (parâmetro planilha, média fornecedores regulares)
+  const perc_cred_iva = 0.85;
+  const fator_forn = getCreditoFator(input.supplierRegime);
+
+  const iva_bruto_forn = +(vForn * aliq_iva).toFixed(2);
+  const iva_bruto_emp  = +(vEmp  * aliq_iva).toFixed(2);
+  const iva_bruto_cli  = +(vCli  * aliq_iva).toFixed(2);
+
+  // Crédito IVA entrada — baseado no regime do fornecedor e % compras com crédito
+  const cred_iva_emp  = +(vForn * aliq_iva * fator_forn * perc_cred_iva).toFixed(2);
+  const cred_iva_cli  = +(vEmp  * aliq_iva * getCreditoFator(regimeFuturo) * perc_cred_iva).toFixed(2);
+
+  const iva_liq_forn = +(iva_bruto_forn).toFixed(2);              // fornecedor: sem crédito de entrada
+  const iva_liq_emp  = +(iva_bruto_emp - cred_iva_emp).toFixed(2);
+  const iva_liq_cli_b2b = input.customerType.includes('B2B') 
+    ? +(iva_bruto_cli - cred_iva_cli).toFixed(2)  // cliente B2B recupera crédito
+    : +(iva_bruto_cli).toFixed(2);                 // cliente B2C não recupera
+
+  // Split Payment: retenção automática do IVA líquido no pagamento
+  // (LC 214/2025 arts. 47-55)
+  const split_retido = iva_liq_emp;
+  const float_perdido = +(vEmp * aliq_iva * (25/30)).toFixed(2); // 25 dias de float perdido
+
+  // Delta imposto pago (empresa)
+  const diff_imposto_pago = +(iva_liq_emp - trib_liq_emp).toFixed(2);
+
+  // ── Tabela DRE Conceitual (formato planilha: Atual vs Reforma) ───────────
+  // Valores normalizados por venda de R$ 1.000 do fornecedor
+  const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
   const conceptualSimulation = [
-    { etapa: '1. Custo de Aquisição (Bruto)',          atual: `R$ ${venda_forn.toFixed(2).replace('.', ',')}`,                         reforma: `R$ ${venda_forn.toFixed(2).replace('.', ',')}` },
-    { etapa: '2. (-) Créditos Tributários na Compra',  atual: `R$ ${credito_atual.toFixed(2).replace('.', ',')}`,                       reforma: `R$ ${credito_iva_entrada.toFixed(2).replace('.', ',')}` },
-    { etapa: '3. (=) Custo Líquido de Mercadoria',     atual: `R$ ${custo_liq_atual.toFixed(2).replace('.', ',')}`,                     reforma: `R$ ${custo_liq_reforma.toFixed(2).replace('.', ',')}` },
-    { etapa: '4. (+) Margem de Lucro (Desejada)',       atual: `R$ ${(custo_liq_atual * margem).toFixed(2).replace('.', ',')}`,          reforma: `R$ ${(custo_liq_reforma * margem).toFixed(2).replace('.', ',')}` },
-    { etapa: '5. (+) Impostos sobre a Venda',           atual: `R$ ${imp_atual_emp.toFixed(2).replace('.', ',')}`,                       reforma: `R$ ${iva_debito_saida.toFixed(2).replace('.', ',')}` },
-    { etapa: '6. (=) Preço de Venda Final',             atual: `R$ ${preco_atual.toFixed(2).replace('.', ',')}`,                         reforma: `R$ ${preco_reforma.toFixed(2).replace('.', ',')}` },
+    {
+      etapa:   '1. Receita Bruta / Valor da Nota',
+      atual:   fmt(vEmp),
+      reforma: fmt(vEmp),
+    },
+    {
+      etapa:   '2. (-) Impostos sobre Receita (débito)',
+      atual:   fmt(pis_cofins_emp + icms_emp),
+      reforma: fmt(iva_bruto_emp),
+    },
+    {
+      etapa:   '3. (+) Créditos Fiscais sobre Compras',
+      atual:   fmt(cred_pis_emp + cred_icms_emp),
+      reforma: fmt(cred_iva_emp),
+    },
+    {
+      etapa:   '4. (=) Tributo Líquido a Pagar',
+      atual:   fmt(trib_liq_emp),
+      reforma: fmt(iva_liq_emp),
+    },
+    {
+      etapa:   '5. Split Payment (retido automaticamente)',
+      atual:   'Não se aplica',
+      reforma: fmt(split_retido),
+    },
+    {
+      etapa:   '6. (=) Caixa Efetivamente Recebido',
+      atual:   fmt(vEmp - trib_liq_emp),
+      reforma: fmt(vEmp - split_retido),
+    },
   ];
 
-  // chainEfficiency alinhado com types.ts
-  const chainEfficiency = {
-    currentFinalCost:  `R$ ${preco_atual.toFixed(2).replace('.', ',')}`,
-    reformFinalCost:   `R$ ${preco_reforma.toFixed(2).replace('.', ',')}`,
-    efficiencyGain:    `${diff_imposto_pago > 0 ? '-' : '+'}R$ ${Math.abs(diff_imposto_pago).toFixed(2).replace('.', ',')}`,
-    description:       diff_imposto_pago > 0
-      ? `Com o regime ${regimeFuturo}, o imposto líquido aumenta R$ ${diff_imposto_pago.toFixed(2)} em relação ao cenário atual.`
-      : `Com o regime ${regimeFuturo}, o imposto líquido reduz R$ ${Math.abs(diff_imposto_pago).toFixed(2)} em relação ao cenário atual.`,
-  };
-
-  // simulationTable — formato original
+  // ── Tabela Cadeia de Valor (formato original simulationTable) ────────────
   const simulationTable = [
-    { etapa: 'Fornecedor',    valorVenda: `R$ ${venda_forn.toFixed(2)}`, ibsCbsDebito: `R$ ${(venda_forn * aliq_iva).toFixed(2)}`,   creditoSplit: `R$ 0,00`,                              impostoLiquido: `R$ ${(venda_forn * aliq_iva).toFixed(2)}` },
-    { etapa: 'Sua Empresa',   valorVenda: `R$ ${venda_emp.toFixed(2)}`,  ibsCbsDebito: `R$ ${iva_debito_saida.toFixed(2)}`,          creditoSplit: `R$ ${credito_iva_entrada.toFixed(2)}`,  impostoLiquido: `R$ ${iva_liq_empresa.toFixed(2)}` },
-    { etapa: 'Cliente Final', valorVenda: `R$ ${venda_cli.toFixed(2)}`,  ibsCbsDebito: `R$ ${(venda_cli * aliq_iva).toFixed(2)}`,    creditoSplit: `R$ ${iva_debito_saida.toFixed(2)}`,    impostoLiquido: `R$ ${((venda_cli * aliq_iva) - iva_debito_saida).toFixed(2)}` },
+    {
+      etapa:         'Fornecedor',
+      valorVenda:    fmt(vForn),
+      ibsCbsDebito:  fmt(iva_bruto_forn),
+      creditoSplit:  'R$ 0,00',
+      impostoLiquido: fmt(iva_liq_forn),
+    },
+    {
+      etapa:         'Sua Empresa',
+      valorVenda:    fmt(vEmp),
+      ibsCbsDebito:  fmt(iva_bruto_emp),
+      creditoSplit:  fmt(cred_iva_emp),
+      impostoLiquido: fmt(iva_liq_emp),
+    },
+    {
+      etapa:         'Cliente Final',
+      valorVenda:    fmt(vCli),
+      ibsCbsDebito:  fmt(iva_bruto_cli),
+      creditoSplit:  fmt(cred_iva_cli),
+      impostoLiquido: fmt(iva_liq_cli_b2b),
+    },
   ];
+
+  // ── chainEfficiency alinhado com types.ts ────────────────────────────────
+  const chainEfficiency = {
+    currentFinalCost:  fmt(vEmp - trib_liq_emp),
+    reformFinalCost:   fmt(vEmp - split_retido),
+    efficiencyGain:    fmt(Math.abs(diff_imposto_pago)),
+    description: diff_imposto_pago > 0
+      ? `Com o regime ${regimeFuturo}, o IVA líquido aumenta R$ ${Math.abs(diff_imposto_pago).toFixed(2).replace('.', ',')} vs cenário atual. Split Payment retém R$ ${fmt(split_retido)} automaticamente.`
+      : `Com o regime ${regimeFuturo}, os créditos IVA superam os tributos atuais — redução de R$ ${Math.abs(diff_imposto_pago).toFixed(2).replace('.', ',')} no imposto pago.`,
+  };
 
   return {
-    conceptualSimulation,
-    chainEfficiency,
-    simulationTable,
+    conceptualSimulation,   // array de rows — formato tabela DRE
+    chainEfficiency,        // alinhado com types.ts
+    simulationTable,        // tabela cadeia fornecedor→empresa→cliente
+    // Campos extras usados nos badges e card de impacto no caixa
     aliq_pis_cofins_presumido: aliq_atual_emp,
     aliq_iva,
     diff_imposto_pago,
+    // Dados extras para contexto adicional
+    trib_liq_emp,
+    iva_liq_emp,
+    split_retido,
+    float_perdido,
+    cred_iva_emp,
   };
 };
 
@@ -372,74 +468,11 @@ export const analyzeSupplyChain = async (input: SupplyChainInput): Promise<Suppl
   checkRateLimit('supplyChain');
 
   const prompt = `
-    Você é um auditor fiscal especialista na Reforma Tributária Brasileira (EC 132/2023, LC 214/2025).
-    Analise o impacto tributário na Cadeia de Valor com o seguinte cenário:
-    - Fornecedor: Setor ${input.supplierSector}, Regime ${input.supplierRegime}
-    - Sua Empresa: Setor ${input.companySector}, Regime ${input.companyRegime}
-    - Cliente: ${input.customerType}
-
-    RETORNE OBRIGATORIAMENTE este JSON completo (todos os campos são obrigatórios):
-    {
-      "currentScenario": {
-        "taxResiduePercent": <number>,
-        "recoverableTaxPercent": <number>,
-        "description": "<texto explicando cenário atual>",
-        "inefficiencyAlert": "<alerta sobre ineficiência atual>"
-      },
-      "reformScenario": {
-        "taxResiduePercent": <number>,
-        "recoverableTaxPercent": <number>,
-        "description": "<texto explicando cenário pós-reforma>",
-        "creditGain": "<ganho de crédito esperado>"
-      },
-      "impactSummary": {
-        "buyerCostReductionPercent": <number>,
-        "priceCompetitiveness": "Aumenta" | "Mantém" | "Diminui",
-        "strategicAdvice": "<conselho estratégico direto>"
-      },
-      "flowAnalysis": {
-        "step1_supplier_impact": "<como a reforma impacta o fornecedor ${input.supplierSector}/${input.supplierRegime} — 2-3 frases>",
-        "step2_company_impact": "<como a reforma impacta SUA EMPRESA ${input.companySector}/${input.companyRegime} — 2-3 frases, destaque o impacto no caixa>",
-        "step3_customer_impact": "<como a reforma impacta o cliente ${input.customerType} — 2-3 frases>"
-      },
-      "swotAnalysis": {
-        "strengths": ["<força 1>", "<força 2>", "<força 3>"],
-        "weaknesses": ["<fraqueza 1>", "<fraqueza 2>"],
-        "opportunities": ["<oportunidade 1>", "<oportunidade 2>", "<oportunidade 3>"],
-        "threats": ["<ameaça 1>", "<ameaça 2>"]
-      },
-      "companyRegimeComparisons": [
-        {
-          "regime": "Simples Nacional (Normal)",
-          "taxBurden": "<Baixa|Média|Alta>",
-          "creditGenerated": "<descrição do crédito gerado>",
-          "netResult": "<Positivo para B2C|Neutro|Negativo para B2B>",
-          "recommendation": "<recomendação específica para o contexto do usuário>"
-        },
-        {
-          "regime": "Simples Nacional (Híbrido)",
-          "taxBurden": "<Baixa|Média|Alta>",
-          "creditGenerated": "<descrição>",
-          "netResult": "<resultado>",
-          "recommendation": "<recomendação>"
-        },
-        {
-          "regime": "Lucro Presumido / IVA Padrão",
-          "taxBurden": "<Baixa|Média|Alta>",
-          "creditGenerated": "<descrição>",
-          "netResult": "<resultado>",
-          "recommendation": "<recomendação>"
-        },
-        {
-          "regime": "Lucro Real",
-          "taxBurden": "<Baixa|Média|Alta>",
-          "creditGenerated": "<descrição>",
-          "netResult": "<resultado>",
-          "recommendation": "<recomendação>"
-        }
-      ]
-    }
-    JSON válido sem markdown. Todos os campos obrigatórios.
+    Atue como consultor tributário explicando para um EMPREENDEDOR LEIGO.
+    Analise o impacto tributário na Cadeia de Valor: Fornecedor -> Sua Empresa -> Cliente.
+    CENÁRIO: Fornecedor: ${input.supplierSector}/${input.supplierRegime} | Empresa: ${input.companySector}/${input.companyRegime} | Cliente: ${input.customerType}
+    Retorne JSON com: currentScenario, reformScenario, impactSummary, flowAnalysis, swotAnalysis, simulationTable, conceptualSimulation, chainEfficiency, companyRegimeComparisons.
+    JSON válido sem markdown.
   `;
 
   try {
