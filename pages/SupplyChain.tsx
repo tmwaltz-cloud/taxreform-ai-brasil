@@ -20,9 +20,9 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
   const [result, setResult] = useState<SupplyChainResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [futureRegime, setFutureRegime] = useState<string>('Lucro Presumido');
   const [simulationMetrics, setSimulationMetrics] = useState<any>(null);
+  const [analysisMode, setAnalysisMode] = useState<'ai' | 'local'>('ai');
 
   useEffect(() => {
     if (result) {
@@ -38,46 +38,41 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
   const handleSimulate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
     try {
       const data = await runSupplyChainAnalysis(input);
       setResult(data);
       setFutureRegime(input.companyRegime);
       setSimulationMetrics(simuladorEstrategicoIva(input, input.companyRegime));
+      setAnalysisMode('ai');
     } catch (err: any) {
-      // Gemini indisponível — usar fallback local com cálculos tributários
-      // O simuladorEstrategicoIva garante resultado mesmo sem IA
+      // Gemini indisponível — fallback local silencioso com cálculos da LC 214/2025
       const metrics = simuladorEstrategicoIva(input, input.companyRegime);
-      const fallbackResult = {
+      setResult({
         currentScenario: { taxResiduePercent: 10, recoverableTaxPercent: 5, description: 'Análise gerada localmente com base na legislação vigente (LC 214/2025).', inefficiencyAlert: 'Custo tributário oculto na cadeia atual.' },
         reformScenario: { taxResiduePercent: 0, recoverableTaxPercent: 100, description: 'Com o IVA Dual, a não-cumulatividade plena elimina o imposto em cascata.', creditGain: 'Recuperação total dos créditos CBS+IBS.' },
         impactSummary: { buyerCostReductionPercent: 5, priceCompetitiveness: 'Mantém' as const, strategicAdvice: 'Avalie o regime tributário futuro para otimizar créditos CBS+IBS.' },
         flowAnalysis: {
-          step1_supplier_impact: `O fornecedor (${input.supplierSector}/${input.supplierRegime}) passará a destacar o IVA (26,5%) nas notas fiscais. Dependendo do regime, gerará crédito integral ou reduzido (~20% se Simples) para sua empresa.`,
-          step2_company_impact: `Sua empresa (${input.companySector}/${input.companyRegime}) poderá aproveitar créditos CBS+IBS das compras. O impacto no caixa depende do regime futuro e do volume de compras em relação ao faturamento.`,
-          step3_customer_impact: `O cliente (${input.customerType}) ${input.customerType.includes('B2B') ? 'poderá aproveitar os créditos gerados pela sua empresa, tornando o preço mais competitivo no mercado B2B.' : 'arcará com o IVA embutido no preço final, sem possibilidade de recuperação de crédito.'}`,
+          step1_supplier_impact: `O fornecedor (${input.supplierSector}/${input.supplierRegime}) passará a destacar o IVA (26,5%) nas notas fiscais. ${input.supplierRegime.includes('Simples') ? 'Por estar no Simples Nacional, gera crédito reduzido (~20%) para sua empresa.' : 'Gera crédito integral de CBS+IBS para sua empresa usar como abatimento.'}`,
+          step2_company_impact: `Sua empresa (${input.companySector}/${input.companyRegime}) ${input.companyRegime.includes('Simples') && !input.companyRegime.includes('Híbrido') ? 'não gera crédito pleno de IVA. Ideal para vendas B2C. Para clientes B2B, considere migrar para o Simples Híbrido.' : 'gera crédito integral de CBS+IBS. O Split Payment reterá o IVA líquido automaticamente no recebimento — planeje o capital de giro.'}`,
+          step3_customer_impact: `O cliente (${input.customerType}) ${input.customerType.includes('B2B') ? 'poderá usar o crédito IVA gerado pela sua empresa como abatimento — tornando sua oferta mais competitiva no mercado B2B.' : 'arcará com o IVA embutido no preço final, sem recuperação de crédito. O impacto no preço depende do repasse que sua empresa fizer.'}`,
         },
         swotAnalysis: {
           strengths: ['Não-cumulatividade plena elimina tributação em cascata', 'Crédito imediato via Split Payment', 'Simplificação de obrigações acessórias a longo prazo'],
-          weaknesses: ['Período de transição com dupla carga tributária (2026-2028)', 'Necessidade de atualização de ERP e sistemas fiscais'],
-          opportunities: ['Revisão estratégica de fornecedores (regime tributário)', 'Renegociação de contratos com cláusula de repasse', 'Posicionamento como empresa geradora de crédito B2B'],
-          threats: ['Aumento de carga para setores de serviços com poucos créditos de entrada', 'Mudanças frequentes nas regulamentações do CGIBS'],
+          weaknesses: ['Dupla carga tributária no período de transição 2026-2028', 'Necessidade de atualização de ERP e sistemas fiscais', 'Alíquotas IBS por estado ainda não definitivas (CGIBS)'],
+          opportunities: ['Revisão estratégica de fornecedores pelo regime tributário', 'Renegociação de contratos com cláusula de repasse fiscal', 'Posicionamento como empresa geradora de crédito B2B'],
+          threats: ['Aumento de carga para setores de serviços com poucos créditos de entrada', 'Split Payment reduz float financeiro a partir de 2027', 'Mudanças frequentes nas regulamentações do CGIBS'],
         },
         companyRegimeComparisons: [
           { regime: 'Simples Nacional (Normal)', taxBurden: 'Baixa', creditGenerated: 'Não gera crédito pleno', netResult: 'Positivo para B2C', recommendation: 'Ideal se faturar principalmente para consumidores finais, blindando o repasse de alta de impostos.' },
-          { regime: 'Simples Nacional (Híbrido)', taxBurden: 'Média', creditGenerated: 'Integral', netResult: 'Neutro a Negativo', recommendation: 'Inútil para o seu caso. Só faz sentido se seu cliente fosse B2B (outra empresa que precisa de crédito).' },
-          { regime: 'Lucro Presumido / IVA Padrão', taxBurden: 'Alta', creditGenerated: 'Integral', netResult: 'Negativo para B2C', recommendation: 'Exigirá grande repasse de preço. Avaliar viabilidade de migrar para o Simples Nacional, se o faturamento permitir.' },
-          { regime: 'Lucro Real', taxBurden: 'Média/Alta', creditGenerated: 'Integral', netResult: 'Neutro', recommendation: 'Já possui PIS/COFINS não-cumulativo e se beneficiará do crédito pleno de CBS/IBS nas aquisições. Gera crédito para seus clientes.' },
+          { regime: 'Simples Nacional (Híbrido)', taxBurden: 'Média', creditGenerated: 'Integral', netResult: 'Neutro a Negativo', recommendation: input.customerType.includes('B2B') ? 'Recomendado: gera crédito integral para seus clientes B2B sem sair do Simples.' : 'Inútil para o seu caso. Só faz sentido com clientes B2B que precisam de crédito.' },
+          { regime: 'Lucro Presumido / IVA Padrão', taxBurden: 'Alta', creditGenerated: 'Integral', netResult: input.customerType.includes('B2B') ? 'Positivo para B2B' : 'Negativo para B2C', recommendation: 'Gera crédito integral. Exigirá repasse de preço se o cliente for B2C. Avaliar viabilidade conforme faturamento.' },
+          { regime: 'Lucro Real', taxBurden: 'Média/Alta', creditGenerated: 'Integral', netResult: 'Neutro', recommendation: 'Melhor para empresas com alto volume de compras. Crédito pleno de CBS+IBS e PIS/COFINS atual. Exige SPED e controles avançados.' },
         ],
         ...metrics,
-      };
-      setResult(fallbackResult);
+      });
       setFutureRegime(input.companyRegime);
       setSimulationMetrics(metrics);
-      // Mostrar aviso sutil (não alert) apenas se for erro real, não 503
-      if (!err?.message?.includes('503') && !err?.message?.includes('UNAVAILABLE')) {
-        setError('IA temporariamente indisponível. Análise calculada localmente com base na legislação vigente.');
-      }
+      setAnalysisMode('local');
     } finally {
       setLoading(false);
     }
@@ -127,12 +122,11 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
          </div>
       </div>
 
-      {/* Banner de aviso sutil quando IA indisponível */}
-      {error && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-500" />
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="ml-auto text-amber-400 hover:text-amber-600">✕</button>
+      {/* Badge discreto quando análise é local */}
+      {analysisMode === 'local' && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-500 w-fit">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>
+          Análise calculada localmente · IA indisponível no momento
         </div>
       )}
 
