@@ -14,11 +14,9 @@ try {
 }
 
 // ─── Modelos disponíveis (abril 2026) ────────────────────────────────────────
-// gemini-1.5 e gemini-2.0 foram desligados para novos projetos
-// Usar apenas família 2.5 com retry por sobrecarga (503)
 const MODELS = [
-  'gemini-2.5-flash',      // 1º — principal (pode dar 503 em picos)
-  'gemini-2.5-flash-lite', // 2º — mais leve, menos sobrecarregado
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
 ];
 
 // ─── System Instructions ──────────────────────────────────────────────────────
@@ -112,14 +110,10 @@ function is503(error: any): boolean {
   );
 }
 
-/**
- * Executa fn(model) tentando cada modelo da lista MODELS em cascata.
- * Para cada modelo, tenta até `retriesPerModel` vezes antes de cair para o próximo.
- */
 async function withModelFallback<T>(
   fn: (model: string) => Promise<T>,
-  retriesPerModel = 3,   // 3 tentativas por modelo (era 2)
-  baseDelay = 3000       // 3s, 6s, 9s (era 2s)
+  retriesPerModel = 3,
+  baseDelay = 3000
 ): Promise<T> {
   let lastError: any;
 
@@ -127,7 +121,6 @@ async function withModelFallback<T>(
     for (let attempt = 1; attempt <= retriesPerModel; attempt++) {
       try {
         const result = await fn(model);
-        // Logar se usou fallback
         if (model !== MODELS[0]) {
           console.info(`[Gemini] Usando modelo fallback: ${model}`);
         }
@@ -146,7 +139,6 @@ async function withModelFallback<T>(
           continue;
         }
 
-        // Erro não-503: não adianta retry, pular para próximo modelo
         console.warn(`[Gemini] Erro não-503 em ${model}:`, error?.message);
         break;
       }
@@ -208,7 +200,6 @@ export const fetchReformTimeline = async (): Promise<TimelineItem[]> => {
     return data;
   } catch (error) {
     console.error('[Gemini] Timeline error:', error);
-    // Fallback estático
     return [
       { period: 'Jan/2026', status: 'done', title: 'Início da fase-teste IBS/CBS', description: 'NF-e começa a exibir CBS 0,9% e IBS 0,1%. Cobrança simbólica.' },
       { period: 'Abr/2026', status: 'current', title: 'Fim do período de tolerância', description: 'Empresas devem estar com ERP adaptado para os novos campos.' },
@@ -223,7 +214,7 @@ export const fetchReformTimeline = async (): Promise<TimelineItem[]> => {
 // ─── Notícias em tempo real ───────────────────────────────────────────────────
 
 const newsCache: { data: NewsItem[] | null; timestamp: number } = { data: null, timestamp: 0 };
-const NEWS_CACHE_DURATION_MS = 1000 * 60 * 15; // 15 minutos
+const NEWS_CACHE_DURATION_MS = 1000 * 60 * 15;
 
 export const fetchTaxNews = async (userRole?: UserRole, topic?: string): Promise<NewsItem[]> => {
   const now = Date.now();
@@ -281,26 +272,20 @@ export const fetchTaxNews = async (userRole?: UserRole, topic?: string): Promise
 //   Lucro Real:      PIS 1,65% + COFINS 7,60% = 9,25% (não-cumulativo)
 //   Lucro Presumido: PIS 0,65% + COFINS 3,00% = 3,65% (cumulativo)
 //   Simples Nacional: embutido DAS ~3,5%
-// Crédito Simples Nacional pós-reforma: ~20% do IVA (LC 214/2025 regime híbrido)
 
 export const simuladorEstrategicoIva = (input: SupplyChainInput, futureRegime?: string) => {
   const regimeFuturo = futureRegime || input.companyRegime;
 
-  // ── Alíquotas IVA Dual (LC 214/2025) ─────────────────────────────────────
-  const aliq_cbs       = 0.088;   // CBS fixada (art.12)
-  const aliq_ibs       = 0.177;   // IBS referência MF (art.15)
+  const aliq_cbs       = 0.088;
+  const aliq_ibs       = 0.177;
   const aliq_iva       = aliq_cbs + aliq_ibs;  // 26,5%
-  const fator_simples  = 0.20;    // crédito reduzido SN (~20%)
-  const fator_hibrido  = 1.00;    // Simples Dual gera crédito integral
+  const fator_simples  = 0.20;
+  const fator_hibrido  = 1.00;
 
-  // ── Alíquotas PIS/COFINS regime atual ────────────────────────────────────
-  // Lucro Real: PIS 1,65% + COFINS 7,60% (Lei 10.637/02 + 10.833/03)
-  // Lucro Presumido: PIS 0,65% + COFINS 3,00% (Lei 9.718/98)
-  // Simples Nacional: ~3,5% embutido DAS (LC 123/2006)
   const aliq_lr   = 0.0165 + 0.076;   // 9,25%
   const aliq_lp   = 0.0065 + 0.030;   // 3,65%
-  const aliq_sn   = 0.035;            // ~3,5% médio
-  const aliq_icms = 0.05;             // ICMS/ISS médio estimado
+  const aliq_sn   = 0.035;            // ~3,5%
+  const aliq_icms = 0.05;
 
   const getAliqPisCofins = (regime: string): number => {
     if (regime.includes('Lucro Real'))  return aliq_lr;
@@ -308,26 +293,21 @@ export const simuladorEstrategicoIva = (input: SupplyChainInput, futureRegime?: 
     return aliq_lp;
   };
 
-  // Fator de crédito IVA por regime do fornecedor (pós-reforma)
   const getCreditoFator = (regime: string): number => {
     if (regime.includes('Simples Dual') || regime.includes('Híbrido')) return fator_hibrido;
     if (regime.includes('Simples Nacional')) return fator_simples;
     return 1.0;
   };
 
-  // ── Valores base da cadeia (escalonados: 1.000 → 1.500 → 2.000) ──────────
-  // Representa: Fornecedor vende por 1.000 | Empresa revende por 1.500 | Cliente paga 2.000
   const vForn = 1_000.00;
   const vEmp  = 1_500.00;
   const vCli  = 2_000.00;
-  const margem = (vEmp - vForn) / vForn; // markup ~50%
 
   const aliq_atual_forn = getAliqPisCofins(input.supplierRegime);
   const aliq_atual_emp  = getAliqPisCofins(input.companyRegime);
   const aliq_atual_fut  = getAliqPisCofins(regimeFuturo);
 
-  // ── CENÁRIO ATUAL ─────────────────────────────────────────────────────────
-  // Débitos sobre vendas
+  // CENÁRIO ATUAL
   const pis_cofins_forn = +(vForn * aliq_atual_forn).toFixed(2);
   const icms_forn       = +(vForn * aliq_icms).toFixed(2);
   const pis_cofins_emp  = +(vEmp  * aliq_atual_emp).toFixed(2);
@@ -335,9 +315,6 @@ export const simuladorEstrategicoIva = (input: SupplyChainInput, futureRegime?: 
   const pis_cofins_cli  = +(vCli  * aliq_atual_fut).toFixed(2);
   const icms_cli        = +(vCli  * aliq_icms).toFixed(2);
 
-  // Créditos recebidos (somente Lucro Real tem crédito PIS/COFINS na entrada)
-  // % compras c/ crédito PIS/COFINS: 70% (parâmetro planilha)
-  // % compras c/ crédito ICMS: 50%
   const perc_cred_pis = input.companyRegime.includes('Lucro Real') ? 0.70 : 0;
   const perc_cred_icms = 0.50;
 
@@ -348,8 +325,7 @@ export const simuladorEstrategicoIva = (input: SupplyChainInput, futureRegime?: 
   const trib_liq_emp  = +(pis_cofins_emp + icms_emp - cred_pis_emp - cred_icms_emp).toFixed(2);
   const trib_liq_cli  = +(pis_cofins_cli + icms_cli).toFixed(2);
 
-  // ── PÓS-REFORMA 2027 (IVA Dual CBS+IBS) ──────────────────────────────────
-  // % compras c/ crédito IBS/CBS: 85% (parâmetro planilha, média fornecedores regulares)
+  // PÓS-REFORMA 2027
   const perc_cred_iva = 0.85;
   const fator_forn = getCreditoFator(input.supplierRegime);
 
@@ -357,105 +333,70 @@ export const simuladorEstrategicoIva = (input: SupplyChainInput, futureRegime?: 
   const iva_bruto_emp  = +(vEmp  * aliq_iva).toFixed(2);
   const iva_bruto_cli  = +(vCli  * aliq_iva).toFixed(2);
 
-  // Crédito IVA entrada — baseado no regime do fornecedor e % compras com crédito
   const cred_iva_emp  = +(vForn * aliq_iva * fator_forn * perc_cred_iva).toFixed(2);
   const cred_iva_cli  = +(vEmp  * aliq_iva * getCreditoFator(regimeFuturo) * perc_cred_iva).toFixed(2);
 
-  const iva_liq_forn = +(iva_bruto_forn).toFixed(2);              // fornecedor: sem crédito de entrada
+  const iva_liq_forn = +(iva_bruto_forn).toFixed(2);
   const iva_liq_emp  = +(iva_bruto_emp - cred_iva_emp).toFixed(2);
-  const iva_liq_cli_b2b = input.customerType.includes('B2B') 
-    ? +(iva_bruto_cli - cred_iva_cli).toFixed(2)  // cliente B2B recupera crédito
-    : +(iva_bruto_cli).toFixed(2);                 // cliente B2C não recupera
+  const iva_liq_cli_b2b = input.customerType.includes('B2B')
+    ? +(iva_bruto_cli - cred_iva_cli).toFixed(2)
+    : +(iva_bruto_cli).toFixed(2);
 
-  // Split Payment: retenção automática do IVA líquido no pagamento
-  // (LC 214/2025 arts. 47-55)
   const split_retido = iva_liq_emp;
-  const float_perdido = +(vEmp * aliq_iva * (25/30)).toFixed(2); // 25 dias de float perdido
-
-  // Delta imposto pago (empresa)
+  const float_perdido = +(vEmp * aliq_iva * (25/30)).toFixed(2);
   const diff_imposto_pago = +(iva_liq_emp - trib_liq_emp).toFixed(2);
 
-  // ── Tabela DRE Conceitual (formato planilha: Atual vs Reforma) ───────────
-  // Valores normalizados por venda de R$ 1.000 do fornecedor
   const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
   const conceptualSimulation = [
-    {
-      etapa:   '1. Receita Bruta / Valor da Nota',
-      atual:   fmt(vEmp),
-      reforma: fmt(vEmp),
-    },
-    {
-      etapa:   '2. (-) Impostos sobre Receita (débito)',
-      atual:   fmt(pis_cofins_emp + icms_emp),
-      reforma: fmt(iva_bruto_emp),
-    },
-    {
-      etapa:   '3. (+) Créditos Fiscais sobre Compras',
-      atual:   fmt(cred_pis_emp + cred_icms_emp),
-      reforma: fmt(cred_iva_emp),
-    },
-    {
-      etapa:   '4. (=) Tributo Líquido a Pagar',
-      atual:   fmt(trib_liq_emp),
-      reforma: fmt(iva_liq_emp),
-    },
-    {
-      etapa:   '5. Split Payment (retido automaticamente)',
-      atual:   'Não se aplica',
-      reforma: fmt(split_retido),
-    },
-    {
-      etapa:   '6. (=) Caixa Efetivamente Recebido',
-      atual:   fmt(vEmp - trib_liq_emp),
-      reforma: fmt(vEmp - split_retido),
-    },
+    { etapa: '1. Custo de Reposição (Nota)', atual: fmt(vForn), reforma: fmt(vForn) },
+    { etapa: '2. (-) Créditos Tributários de Compra', atual: fmt(cred_pis_emp + cred_icms_emp), reforma: fmt(cred_iva_emp) },
+    { etapa: '3. (=) Custo Líquido de Mercadoria', atual: fmt(vForn - cred_pis_emp - cred_icms_emp), reforma: fmt(vForn - cred_iva_emp) },
+    { etapa: '4. (+) Margem de Lucro (Empresa)', atual: fmt(vEmp - vForn), reforma: fmt(vEmp - vForn) },
+    { etapa: '5. (-) Impostos sobre a Venda', atual: fmt(pis_cofins_emp + icms_emp), reforma: fmt(iva_bruto_emp) },
+    { etapa: '6. (=) Preço de Venda Final', atual: fmt(vEmp), reforma: fmt(vEmp) },
   ];
 
-  // ── Tabela Cadeia de Valor (formato original simulationTable) ────────────
   const simulationTable = [
     {
-      etapa:         'Fornecedor',
-      valorVenda:    fmt(vForn),
-      ibsCbsDebito:  fmt(iva_bruto_forn),
-      creditoSplit:  'R$ 0,00',
+      etapa: 'Fornecedor',
+      valorVenda: fmt(vForn),
+      ibsCbsDebito: fmt(iva_bruto_forn),
+      creditoSplit: 'R$ 0,00',
       impostoLiquido: fmt(iva_liq_forn),
     },
     {
-      etapa:         'Sua Empresa',
-      valorVenda:    fmt(vEmp),
-      ibsCbsDebito:  fmt(iva_bruto_emp),
-      creditoSplit:  fmt(cred_iva_emp),
+      etapa: 'Sua Empresa',
+      valorVenda: fmt(vEmp),
+      ibsCbsDebito: fmt(iva_bruto_emp),
+      creditoSplit: fmt(cred_iva_emp),
       impostoLiquido: fmt(iva_liq_emp),
     },
     {
-      etapa:         'Cliente Final',
-      valorVenda:    fmt(vCli),
-      ibsCbsDebito:  fmt(iva_bruto_cli),
-      creditoSplit:  fmt(cred_iva_cli),
+      etapa: 'Cliente Final',
+      valorVenda: fmt(vCli),
+      ibsCbsDebito: fmt(iva_bruto_cli),
+      creditoSplit: fmt(cred_iva_cli),
       impostoLiquido: fmt(iva_liq_cli_b2b),
     },
   ];
 
-  // ── chainEfficiency alinhado com types.ts ────────────────────────────────
   const chainEfficiency = {
-    currentFinalCost:  fmt(vEmp - trib_liq_emp),
-    reformFinalCost:   fmt(vEmp - split_retido),
-    efficiencyGain:    fmt(Math.abs(diff_imposto_pago)),
+    currentFinalCost: fmt(vEmp - trib_liq_emp),
+    reformFinalCost: fmt(vEmp - split_retido),
+    efficiencyGain: fmt(Math.abs(diff_imposto_pago)),
     description: diff_imposto_pago > 0
       ? `Com o regime ${regimeFuturo}, o IVA líquido aumenta R$ ${Math.abs(diff_imposto_pago).toFixed(2).replace('.', ',')} vs cenário atual. Split Payment retém R$ ${fmt(split_retido)} automaticamente.`
       : `Com o regime ${regimeFuturo}, os créditos IVA superam os tributos atuais — redução de R$ ${Math.abs(diff_imposto_pago).toFixed(2).replace('.', ',')} no imposto pago.`,
   };
 
   return {
-    conceptualSimulation,   // array de rows — formato tabela DRE
-    chainEfficiency,        // alinhado com types.ts
-    simulationTable,        // tabela cadeia fornecedor→empresa→cliente
-    // Campos extras usados nos badges e card de impacto no caixa
+    conceptualSimulation,
+    chainEfficiency,
+    simulationTable,
     aliq_pis_cofins_presumido: aliq_atual_emp,
     aliq_iva,
     diff_imposto_pago,
-    // Dados extras para contexto adicional
     trib_liq_emp,
     iva_liq_emp,
     split_retido,
@@ -464,19 +405,228 @@ export const simuladorEstrategicoIva = (input: SupplyChainInput, futureRegime?: 
   };
 };
 
+// ─── Fallback local completo para Supply Chain ────────────────────────────────
+// Gera dados textuais contextualizados sem depender do Gemini
+
+function buildLocalSupplyChainResult(input: SupplyChainInput): Omit<SupplyChainResult, 'conceptualSimulation' | 'chainEfficiency' | 'simulationTable'> {
+  const isSimples = input.companyRegime.includes('Simples') && !input.companyRegime.includes('Híbrido');
+  const isHibrido = input.companyRegime.includes('Híbrido') || input.companyRegime.includes('Dual');
+  const isB2B = input.customerType.includes('B2B');
+  const fornSimples = input.supplierRegime.includes('Simples') && !input.supplierRegime.includes('Híbrido');
+
+  return {
+    currentScenario: {
+      taxResiduePercent: isSimples ? 5 : 10,
+      recoverableTaxPercent: isSimples ? 0 : (input.companyRegime.includes('Lucro Real') ? 70 : 5),
+      description: 'Análise gerada localmente com base na legislação vigente (LC 214/2025, EC 132/2023).',
+      inefficiencyAlert: isSimples
+        ? 'No Simples Nacional atual, o imposto é cumulativo e não gera crédito para clientes B2B.'
+        : 'Custo tributário oculto na cadeia por cumulatividade parcial de PIS/COFINS.',
+    },
+    reformScenario: {
+      taxResiduePercent: 0,
+      recoverableTaxPercent: isSimples ? 20 : 100,
+      description: 'Com o IVA Dual (CBS 8,8% + IBS 17,7% = 26,5%), a não-cumulatividade plena elimina o imposto em cascata.',
+      creditGain: isSimples
+        ? 'Crédito reduzido (~20% do IVA). Considere o Simples Dual para crédito integral.'
+        : 'Recuperação total dos créditos CBS+IBS via Split Payment.',
+    },
+    impactSummary: {
+      buyerCostReductionPercent: isB2B ? 8 : 3,
+      priceCompetitiveness: isB2B ? 'Aumenta' as const : 'Mantém' as const,
+      strategicAdvice: isSimples && isB2B
+        ? 'Migre para o Simples Dual (Híbrido) para gerar crédito integral e manter competitividade B2B.'
+        : 'Avalie o regime tributário futuro para otimizar créditos CBS+IBS na cadeia.',
+    },
+    flowAnalysis: {
+      step1_supplier_impact: fornSimples
+        ? `O fornecedor (${input.supplierSector}/${input.supplierRegime}) está no Simples Nacional. Na reforma, passará a destacar o IVA (26,5%) na NF-e, mas gera apenas ~20% de crédito para sua empresa. Isso encarece seu custo de aquisição em relação a um fornecedor do Lucro Presumido ou Real, que gera crédito integral. Considere renegociar preços ou diversificar fornecedores.`
+        : `O fornecedor (${input.supplierSector}/${input.supplierRegime}) passará a destacar o IVA Dual (CBS 8,8% + IBS 17,7% = 26,5%) nas notas fiscais a partir de 2027. Como está no ${input.supplierRegime}, gera crédito integral de CBS+IBS para sua empresa usar como abatimento. O Split Payment reterá automaticamente o IVA na transação, eliminando a necessidade de pagamento posterior separado.`,
+      step2_company_impact: isSimples
+        ? `Sua empresa (${input.companySector}/${input.companyRegime}) está no Simples Nacional, que não gera crédito pleno de IVA para clientes B2B. ${isB2B ? 'ATENÇÃO: seus clientes B2B perdem competitividade comprando de você. Considere fortemente migrar para o Simples Dual (Híbrido) para gerar crédito integral.' : 'Para vendas B2C, o Simples Nacional continua vantajoso por ter carga menor. O consumidor final não recupera crédito de qualquer forma.'} O Split Payment reterá o IVA automaticamente no recebimento — planeje seu capital de giro.`
+        : `Sua empresa (${input.companySector}/${input.companyRegime}) gera crédito integral de CBS+IBS (26,5%). ${isB2B ? 'Seus clientes B2B poderão aproveitar o crédito total, tornando sua oferta competitiva.' : 'Para clientes B2C, o IVA será embutido no preço final.'} O Split Payment reterá o IVA líquido automaticamente no recebimento — impacto direto no fluxo de caixa. Planeje o capital de giro considerando a retenção automática.`,
+      step3_customer_impact: isB2B
+        ? `O cliente B2B (${input.customerType}) poderá usar o crédito IVA gerado pela sua empresa como abatimento — tornando sua oferta mais competitiva no mercado B2B. ${isSimples ? 'Porém, como sua empresa está no Simples Nacional, o crédito gerado é reduzido (~20%), o que diminui a atratividade da sua oferta vs concorrentes no Lucro Presumido/Real.' : 'Como sua empresa gera crédito integral, o cliente aproveita 100% do IVA destacado como crédito.'} A transparência do Split Payment facilita a conferência de créditos.`
+        : `O cliente final (${input.customerType}) arcará com o IVA embutido no preço final, sem recuperação de crédito. O impacto no preço ao consumidor depende do repasse que sua empresa fizer. A não-cumulatividade reduz custos intermediários, o que pode permitir preços finais competitivos mesmo com a alíquota de 26,5%.`,
+    },
+    swotAnalysis: {
+      strengths: [
+        'Não-cumulatividade plena: possibilidade de se creditar de praticamente todos os impostos pagos na cadeia, reduzindo o custo tributário efetivo',
+        'Simplificação a longo prazo: menos impostos e regras mais claras para gerenciar',
+        'Neutralidade tributária: menos distorções na tomada de decisões de negócios baseadas em incentivos fiscais',
+      ],
+      weaknesses: [
+        `Período de transição: complexidade e curva de aprendizado significativas entre 2026 e 2033, exigindo adaptação de sistemas e processos`,
+        isSimples
+          ? 'Simples Nacional: crédito reduzido (~20%) para clientes B2B torna a empresa menos competitiva em cadeias B2B'
+          : 'Alíquota única: embora simplifique, a alíquota de referência pode ser mais alta que as taxas atuais dependendo do setor',
+        'Impacto no fluxo de caixa: Split Payment retém o IVA automaticamente, reduzindo o caixa líquido recebido por venda',
+      ],
+      opportunities: [
+        'Otimização de custos: reavaliação e renegociação com fornecedores com base na nova estrutura de créditos',
+        'Reprecificação estratégica: oportunidade de ajustar os preços dos seus serviços de forma mais competitiva',
+        'Inovação e investimento: a não-cumulatividade plena incentiva investimentos em tecnologia e equipamentos, pois os impostos geram créditos',
+      ],
+      threats: [
+        'Competição acirrada: outras empresas também se beneficiarão da não-cumulatividade, aumentando a pressão por preços',
+        'Variação nas alíquotas: incerteza sobre as alíquotas finais da CBS e do IBS que ainda serão definidas por lei complementar e pelos estados/municípios',
+        'Fiscalização e auditoria: maior foco na conformidade e na apuração correta dos créditos, exigindo sistemas robustos',
+      ],
+    },
+    companyRegimeComparisons: [
+      {
+        regime: `Geral (Atual: ${input.companyRegime})`,
+        taxBurden: input.companyRegime.includes('Lucro Real') ? 'Alta (9,25%)' : input.companyRegime.includes('Simples') ? 'Baixa (~3,5%)' : 'Média (3,65%)',
+        creditGenerated: input.companyRegime.includes('Lucro Real') ? 'Integral' : input.companyRegime.includes('Simples') ? 'Não gera' : 'Não gera (cumulativo)',
+        netResult: isB2B ? (input.companyRegime.includes('Lucro Real') ? 'Positivo' : 'Negativo') : 'Neutro',
+        recommendation: `Avalie se a sua carga for suficiente no ${input.companyRegime}. Para economia, considere a simulação abaixo.`,
+      },
+      {
+        regime: 'Simples Nacional (Padrão)',
+        taxBurden: 'Baixa (~3,5% DAS)',
+        creditGenerated: 'Reduzido (~20%)',
+        netResult: isB2B ? 'Negativo para B2B' : 'Positivo para B2C',
+        recommendation: isB2B
+          ? 'Não recomendado: o cliente B2B perde crédito, tornando seu preço menos competitivo.'
+          : 'Eficiente para vendas B2C onde o consumidor não recupera crédito.',
+      },
+      {
+        regime: 'Simples Nacional (Híbrido/Dual)',
+        taxBurden: 'Média/Alta',
+        creditGenerated: 'Integral',
+        netResult: isB2B ? 'Positivo para B2B' : 'Neutro/Negativo',
+        recommendation: isB2B
+          ? 'Altamente recomendado: gera crédito integral para seus clientes B2B sem sair do Simples.'
+          : 'Não faz sentido para B2C: custo tributário maior sem benefício de crédito para o consumidor final.',
+      },
+      {
+        regime: 'Lucro Presumido / IVA Padrão',
+        taxBurden: 'Alta (26,5%)',
+        creditGenerated: 'Integral',
+        netResult: isB2B ? 'Positivo para B2B' : 'Negativo para B2C',
+        recommendation: 'Gera crédito integral. Migração para o IVA padrão em 2027 obrigatória para não-Simples. Avaliar impacto no preço final.',
+      },
+    ],
+  };
+}
+
+// ─── Validador de resposta do Gemini ─────────────────────────────────────────
+// Garante que todos os campos esperados existam, preenchendo com fallback local
+
+function validateAndMergeSupplyChainResult(
+  geminiData: any,
+  fallback: Omit<SupplyChainResult, 'conceptualSimulation' | 'chainEfficiency' | 'simulationTable'>
+): Omit<SupplyChainResult, 'conceptualSimulation' | 'chainEfficiency' | 'simulationTable'> {
+  const safe = (val: any, fb: any) => (val !== undefined && val !== null && val !== '') ? val : fb;
+  const safeArr = (val: any, fb: any[]) => (Array.isArray(val) && val.length > 0) ? val : fb;
+
+  return {
+    currentScenario: {
+      taxResiduePercent:    safe(geminiData?.currentScenario?.taxResiduePercent, fallback.currentScenario.taxResiduePercent),
+      recoverableTaxPercent: safe(geminiData?.currentScenario?.recoverableTaxPercent, fallback.currentScenario.recoverableTaxPercent),
+      description:          safe(geminiData?.currentScenario?.description, fallback.currentScenario.description),
+      inefficiencyAlert:    safe(geminiData?.currentScenario?.inefficiencyAlert, fallback.currentScenario.inefficiencyAlert),
+    },
+    reformScenario: {
+      taxResiduePercent:    safe(geminiData?.reformScenario?.taxResiduePercent, fallback.reformScenario.taxResiduePercent),
+      recoverableTaxPercent: safe(geminiData?.reformScenario?.recoverableTaxPercent, fallback.reformScenario.recoverableTaxPercent),
+      description:          safe(geminiData?.reformScenario?.description, fallback.reformScenario.description),
+      creditGain:           safe(geminiData?.reformScenario?.creditGain, fallback.reformScenario.creditGain),
+    },
+    impactSummary: {
+      buyerCostReductionPercent: safe(geminiData?.impactSummary?.buyerCostReductionPercent, fallback.impactSummary.buyerCostReductionPercent),
+      priceCompetitiveness:      safe(geminiData?.impactSummary?.priceCompetitiveness, fallback.impactSummary.priceCompetitiveness),
+      strategicAdvice:           safe(geminiData?.impactSummary?.strategicAdvice, fallback.impactSummary.strategicAdvice),
+    },
+    flowAnalysis: {
+      step1_supplier_impact: safe(geminiData?.flowAnalysis?.step1_supplier_impact, fallback.flowAnalysis.step1_supplier_impact),
+      step2_company_impact:  safe(geminiData?.flowAnalysis?.step2_company_impact, fallback.flowAnalysis.step2_company_impact),
+      step3_customer_impact: safe(geminiData?.flowAnalysis?.step3_customer_impact, fallback.flowAnalysis.step3_customer_impact),
+    },
+    swotAnalysis: {
+      strengths:     safeArr(geminiData?.swotAnalysis?.strengths, fallback.swotAnalysis.strengths),
+      weaknesses:    safeArr(geminiData?.swotAnalysis?.weaknesses, fallback.swotAnalysis.weaknesses),
+      opportunities: safeArr(geminiData?.swotAnalysis?.opportunities, fallback.swotAnalysis.opportunities),
+      threats:       safeArr(geminiData?.swotAnalysis?.threats, fallback.swotAnalysis.threats),
+    },
+    companyRegimeComparisons: safeArr(geminiData?.companyRegimeComparisons, fallback.companyRegimeComparisons),
+  };
+}
+
 export const analyzeSupplyChain = async (input: SupplyChainInput): Promise<SupplyChainResult> => {
   checkRateLimit('supplyChain');
 
+  // Fallback local SEMPRE pronto — garante que nunca dê erro
+  const localFallback = buildLocalSupplyChainResult(input);
+  const metrics = simuladorEstrategicoIva(input);
+
   const prompt = `
-    Atue como consultor tributário explicando para um EMPREENDEDOR LEIGO.
-    Analise o impacto tributário na Cadeia de Valor: Fornecedor -> Sua Empresa -> Cliente.
-    CENÁRIO: Fornecedor: ${input.supplierSector}/${input.supplierRegime} | Empresa: ${input.companySector}/${input.companyRegime} | Cliente: ${input.customerType}
-    Retorne JSON com: currentScenario, reformScenario, impactSummary, flowAnalysis, swotAnalysis, simulationTable, conceptualSimulation, chainEfficiency, companyRegimeComparisons.
-    JSON válido sem markdown.
-  `;
+Atue como consultor tributário sênior explicando para um EMPREENDEDOR LEIGO.
+Analise o impacto da Reforma Tributária (EC 132/2023, LC 214/2025) na Cadeia de Valor de 3 etapas.
+
+CENÁRIO DO CLIENTE:
+- Fornecedor: Setor ${input.supplierSector}, regime ${input.supplierRegime}
+- Sua Empresa: Setor ${input.companySector}, regime ${input.companyRegime}
+- Cliente: ${input.customerType}
+
+CONTEXTO LEGAL:
+- IVA Dual: CBS 8,8% + IBS 17,7% = 26,5% (LC 214/2025 arts. 12 e 15)
+- Split Payment: retenção automática do IVA no pagamento (arts. 47-55)
+- Simples Nacional gera crédito reduzido (~20%), Simples Híbrido gera integral
+- Transição: 2026 fase-teste, 2027 CBS plena, 2029-2032 escalonamento IBS, 2033 sistema pleno
+
+RETORNE EXATAMENTE este JSON com os campos abaixo (use EXATAMENTE estes nomes de campo):
+
+{
+  "flowAnalysis": {
+    "step1_supplier_impact": "Texto detalhado (3-5 frases) explicando como o fornecedor impacta tributariamente a cadeia. Inclua regime atual vs reforma, geração de crédito, e recomendação.",
+    "step2_company_impact": "Texto detalhado (3-5 frases) explicando o impacto na empresa do cliente. Inclua Split Payment, crédito gerado, impacto no caixa.",
+    "step3_customer_impact": "Texto detalhado (3-5 frases) explicando o impacto no cliente final. Inclua recuperação de crédito (B2B) ou custo embutido (B2C)."
+  },
+  "swotAnalysis": {
+    "strengths": ["3 forças da reforma para esta cadeia específica"],
+    "weaknesses": ["3 fraquezas/riscos para esta cadeia específica"],
+    "opportunities": ["3 oportunidades estratégicas para esta cadeia"],
+    "threats": ["3 ameaças externas para esta cadeia"]
+  },
+  "companyRegimeComparisons": [
+    {
+      "regime": "Nome do regime",
+      "taxBurden": "Nível de carga (Baixa/Média/Alta com %)",
+      "creditGenerated": "Tipo de crédito gerado",
+      "netResult": "Resultado líquido para o perfil do cliente",
+      "recommendation": "Recomendação contextualizada"
+    }
+  ],
+  "currentScenario": {
+    "taxResiduePercent": 10,
+    "recoverableTaxPercent": 5,
+    "description": "Descrição do cenário tributário atual",
+    "inefficiencyAlert": "Alerta de ineficiência"
+  },
+  "reformScenario": {
+    "taxResiduePercent": 0,
+    "recoverableTaxPercent": 100,
+    "description": "Descrição do cenário pós-reforma",
+    "creditGain": "Descrição do ganho de crédito"
+  },
+  "impactSummary": {
+    "buyerCostReductionPercent": 5,
+    "priceCompetitiveness": "Aumenta",
+    "strategicAdvice": "Conselho estratégico principal"
+  }
+}
+
+REGRAS:
+- Use linguagem SIMPLES e DIRETA para leigos
+- Cada item do SWOT deve ter 1-2 frases completas
+- companyRegimeComparisons deve incluir 4 regimes: regime atual, Simples Nacional, Simples Dual (Híbrido), Lucro Presumido/Real
+- NÃO inclua campos simulationTable, conceptualSimulation ou chainEfficiency (são calculados localmente)
+- Retorne APENAS o JSON válido, sem markdown, sem texto antes ou depois
+`;
 
   try {
-    const result = await withModelFallback(async (model) => {
+    const geminiResult = await withModelFallback(async (model) => {
       const response = await ai.models.generateContent({
         model,
         contents: prompt,
@@ -485,29 +635,21 @@ export const analyzeSupplyChain = async (input: SupplyChainInput): Promise<Suppl
           responseMimeType: 'application/json',
         },
       });
-      return JSON.parse(cleanJsonOutput(response.text)) as SupplyChainResult;
+      return JSON.parse(cleanJsonOutput(response.text));
     });
 
-    const metrics = simuladorEstrategicoIva(input);
-    result.conceptualSimulation = metrics.conceptualSimulation;
-    result.chainEfficiency = metrics.chainEfficiency;
-    result.simulationTable = metrics.simulationTable;
-    return result;
+    // Validar e mesclar com fallback local (preenche campos faltantes)
+    const validated = validateAndMergeSupplyChainResult(geminiResult, localFallback);
+
+    return {
+      ...validated,
+      ...metrics,
+    };
   } catch (error) {
     console.error('[Gemini] Supply chain error:', error);
-    const metrics = simuladorEstrategicoIva(input);
+    // Fallback 100% local — NUNCA falha
     return {
-      currentScenario: { taxResiduePercent: 10, recoverableTaxPercent: 5, description: 'Hoje você paga imposto sobre imposto.', inefficiencyAlert: 'Custo oculto na cadeia.' },
-      reformScenario: { taxResiduePercent: 0, recoverableTaxPercent: 100, description: 'No futuro, o imposto será transparente.', creditGain: 'Recuperação total.' },
-      impactSummary: { buyerCostReductionPercent: 5, priceCompetitiveness: 'Aumenta', strategicAdvice: 'Avalie mudar para o regime híbrido.' },
-      flowAnalysis: { step1_supplier_impact: 'Fornecedor não gera crédito total.', step2_company_impact: 'Empresa repassa custo.', step3_customer_impact: 'Cliente paga mais caro.' },
-      swotAnalysis: { strengths: ['Crédito imediato (Split Payment)'], weaknesses: ['Aumento B2C'], opportunities: ['Revisão contratos Simples'], threats: ['Perda clientes B2B'] },
-      companyRegimeComparisons: [
-        { regime: 'Simples Nacional', taxBurden: 'Menor carga', creditGenerated: 'Não gera crédito', netResult: 'Perda B2B', recommendation: 'Só pessoa física.' },
-        { regime: 'Simples Híbrido', taxBurden: 'Média', creditGenerated: 'Gera crédito integral', netResult: 'Ganho B2B', recommendation: 'Ideal para B2B.' },
-        { regime: 'Lucro Presumido', taxBurden: 'Alta', creditGenerated: 'Gera crédito integral', netResult: 'Neutro', recommendation: 'Avaliar custos.' },
-        { regime: 'Lucro Real', taxBurden: 'Sobre lucro', creditGenerated: 'Gera crédito integral', netResult: 'Ganho margem baixa', recommendation: 'Margens apertadas.' },
-      ],
+      ...localFallback,
       ...metrics,
     };
   }
@@ -544,7 +686,6 @@ export const askTaxConsultant = async (question: string, role: UserRole): Promis
 
   try {
     return await withModelFallback(async (model) => {
-      // googleSearch só funciona sem responseMimeType — OK aqui
       const response = await ai.models.generateContent({
         model,
         contents: prompt,
@@ -612,9 +753,7 @@ export const getActionGuide = async (actionId: string, actionTitle: string): Pro
 };
 
 // ─── Aliases — nomes originais mantidos para compatibilidade ─────────────────
-// Dashboard.tsx usa: fetchLatestUpdates
 export const fetchLatestUpdates = fetchTaxNews;
-// SupplyChain.tsx usa: runSupplyChainAnalysis (simuladorEstrategicoIva já é export)
 export const runSupplyChainAnalysis = analyzeSupplyChain;
 
 // ─── Accountant Guide ─────────────────────────────────────────────────────────

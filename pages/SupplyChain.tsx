@@ -26,7 +26,11 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
 
   useEffect(() => {
     if (result) {
-      setSimulationMetrics(simuladorEstrategicoIva(input, futureRegime));
+      try {
+        setSimulationMetrics(simuladorEstrategicoIva(input, futureRegime));
+      } catch (err) {
+        console.error('[SupplyChain] Erro ao recalcular métricas:', err);
+      }
     }
   }, [futureRegime, input, result]);
 
@@ -45,7 +49,8 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
       setSimulationMetrics(simuladorEstrategicoIva(input, input.companyRegime));
       setAnalysisMode('ai');
     } catch (err: any) {
-      // Gemini indisponível — fallback local silencioso com cálculos da LC 214/2025
+      // Fallback local — NUNCA deixa o usuário sem resultado
+      console.warn('[SupplyChain] Usando fallback local:', err?.message);
       const metrics = simuladorEstrategicoIva(input, input.companyRegime);
       setResult({
         currentScenario: { taxResiduePercent: 10, recoverableTaxPercent: 5, description: 'Análise gerada localmente com base na legislação vigente (LC 214/2025).', inefficiencyAlert: 'Custo tributário oculto na cadeia atual.' },
@@ -53,20 +58,20 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
         impactSummary: { buyerCostReductionPercent: 5, priceCompetitiveness: 'Mantém' as const, strategicAdvice: 'Avalie o regime tributário futuro para otimizar créditos CBS+IBS.' },
         flowAnalysis: {
           step1_supplier_impact: `O fornecedor (${input.supplierSector}/${input.supplierRegime}) passará a destacar o IVA (26,5%) nas notas fiscais. ${input.supplierRegime.includes('Simples') ? 'Por estar no Simples Nacional, gera crédito reduzido (~20%) para sua empresa.' : 'Gera crédito integral de CBS+IBS para sua empresa usar como abatimento.'}`,
-          step2_company_impact: `Sua empresa (${input.companySector}/${input.companyRegime}) ${input.companyRegime.includes('Simples') && !input.companyRegime.includes('Híbrido') ? 'não gera crédito pleno de IVA. Ideal para vendas B2C. Para clientes B2B, considere migrar para o Simples Híbrido.' : 'gera crédito integral de CBS+IBS. O Split Payment reterá o IVA líquido automaticamente no recebimento — planeje o capital de giro.'}`,
-          step3_customer_impact: `O cliente (${input.customerType}) ${input.customerType.includes('B2B') ? 'poderá usar o crédito IVA gerado pela sua empresa como abatimento — tornando sua oferta mais competitiva no mercado B2B.' : 'arcará com o IVA embutido no preço final, sem recuperação de crédito. O impacto no preço depende do repasse que sua empresa fizer.'}`,
+          step2_company_impact: `Sua empresa (${input.companySector}/${input.companyRegime}) ${input.companyRegime.includes('Simples') && !input.companyRegime.includes('Híbrido') ? 'não gera crédito pleno de IVA. Ideal para vendas B2C.' : 'gera crédito integral de CBS+IBS. O Split Payment reterá o IVA líquido automaticamente no recebimento.'}`,
+          step3_customer_impact: `O cliente (${input.customerType}) ${input.customerType.includes('B2B') ? 'poderá usar o crédito IVA gerado pela sua empresa como abatimento.' : 'arcará com o IVA embutido no preço final, sem recuperação de crédito.'}`,
         },
         swotAnalysis: {
           strengths: ['Não-cumulatividade plena elimina tributação em cascata', 'Crédito imediato via Split Payment', 'Simplificação de obrigações acessórias a longo prazo'],
-          weaknesses: ['Dupla carga tributária no período de transição 2026-2028', 'Necessidade de atualização de ERP e sistemas fiscais', 'Alíquotas IBS por estado ainda não definitivas (CGIBS)'],
+          weaknesses: ['Dupla carga tributária no período de transição 2026-2028', 'Necessidade de atualização de ERP e sistemas fiscais', 'Alíquotas IBS por estado ainda não definitivas'],
           opportunities: ['Revisão estratégica de fornecedores pelo regime tributário', 'Renegociação de contratos com cláusula de repasse fiscal', 'Posicionamento como empresa geradora de crédito B2B'],
           threats: ['Aumento de carga para setores de serviços com poucos créditos de entrada', 'Split Payment reduz float financeiro a partir de 2027', 'Mudanças frequentes nas regulamentações do CGIBS'],
         },
         companyRegimeComparisons: [
-          { regime: 'Simples Nacional (Normal)', taxBurden: 'Baixa', creditGenerated: 'Não gera crédito pleno', netResult: 'Positivo para B2C', recommendation: 'Ideal se faturar principalmente para consumidores finais, blindando o repasse de alta de impostos.' },
-          { regime: 'Simples Nacional (Híbrido)', taxBurden: 'Média', creditGenerated: 'Integral', netResult: 'Neutro a Negativo', recommendation: input.customerType.includes('B2B') ? 'Recomendado: gera crédito integral para seus clientes B2B sem sair do Simples.' : 'Inútil para o seu caso. Só faz sentido com clientes B2B que precisam de crédito.' },
-          { regime: 'Lucro Presumido / IVA Padrão', taxBurden: 'Alta', creditGenerated: 'Integral', netResult: input.customerType.includes('B2B') ? 'Positivo para B2B' : 'Negativo para B2C', recommendation: 'Gera crédito integral. Exigirá repasse de preço se o cliente for B2C. Avaliar viabilidade conforme faturamento.' },
-          { regime: 'Lucro Real', taxBurden: 'Média/Alta', creditGenerated: 'Integral', netResult: 'Neutro', recommendation: 'Melhor para empresas com alto volume de compras. Crédito pleno de CBS+IBS e PIS/COFINS atual. Exige SPED e controles avançados.' },
+          { regime: 'Simples Nacional (Normal)', taxBurden: 'Baixa', creditGenerated: 'Não gera crédito pleno', netResult: 'Positivo para B2C', recommendation: 'Ideal se faturar principalmente para consumidores finais.' },
+          { regime: 'Simples Nacional (Híbrido)', taxBurden: 'Média', creditGenerated: 'Integral', netResult: 'Positivo para B2B', recommendation: 'Recomendado para clientes B2B que precisam de crédito.' },
+          { regime: 'Lucro Presumido / IVA Padrão', taxBurden: 'Alta', creditGenerated: 'Integral', netResult: input.customerType.includes('B2B') ? 'Positivo para B2B' : 'Negativo para B2C', recommendation: 'Gera crédito integral. Avaliar viabilidade conforme faturamento.' },
+          { regime: 'Lucro Real', taxBurden: 'Média/Alta', creditGenerated: 'Integral', netResult: 'Neutro', recommendation: 'Melhor para empresas com alto volume de compras e margens apertadas.' },
         ],
         ...metrics,
       });
@@ -82,7 +87,6 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
     if (!result) return;
     setSaving(true);
     try {
-      // Mock save functionality
       await new Promise(resolve => setTimeout(resolve, 1000));
       alert("Análise de cadeia salva com sucesso!");
     } catch (error) {
@@ -94,6 +98,12 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
   };
 
   const handleExport = () => window.print();
+
+  // ─── Helpers seguros para acessar dados ────────────────────────────
+  const flow = result?.flowAnalysis;
+  const swot = result?.swotAnalysis;
+  const regimeComps = result?.companyRegimeComparisons;
+  const concepts = simulationMetrics?.conceptualSimulation;
 
   return (
     <div className="space-y-6">
@@ -123,15 +133,17 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
       </div>
 
       {/* Badge discreto quando análise é local */}
-      {analysisMode === 'local' && (
+      {result && analysisMode === 'local' && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-500 w-fit">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>
-          Análise calculada localmente · IA indisponível no momento
+          Análise calculada localmente (LC 214/2025) · IA indisponível no momento
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* INPUT CONFIGURATION - VERTICAL FLOW */}
+        {/* ═══════════════════════════════════════════════════════════════
+            INPUT CONFIGURATION - VERTICAL FLOW (coluna esquerda)
+            ═══════════════════════════════════════════════════════════ */}
         <div className="lg:col-span-4 h-fit sticky top-6">
           <form onSubmit={handleSimulate} className="relative space-y-4">
              
@@ -227,8 +239,11 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
           </form>
         </div>
 
-        {/* RESULTS AREA */}
+        {/* ═══════════════════════════════════════════════════════════════
+            RESULTS AREA (coluna direita)
+            ═══════════════════════════════════════════════════════════ */}
         <div className="lg:col-span-8 space-y-6">
+           {/* Estado vazio */}
            {!result && !loading && (
              <div className="h-full flex flex-col items-center justify-center text-center p-12 bg-white rounded-xl border border-slate-200 border-dashed">
                 <Users className="w-16 h-16 text-slate-300 mb-4" />
@@ -239,42 +254,71 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
              </div>
            )}
 
-           {result && (
+           {/* Loading */}
+           {loading && (
+             <div className="h-full flex flex-col items-center justify-center text-center p-12 bg-white rounded-xl border border-slate-200">
+                <Loader2 className="w-12 h-12 text-brand-500 animate-spin mb-4" />
+                <h3 className="text-lg font-medium text-slate-700">Analisando cadeia tributária...</h3>
+                <p className="text-slate-500 text-sm mt-2">
+                   Consultando legislação (LC 214/2025) e calculando impactos
+                </p>
+             </div>
+           )}
+
+           {result && !loading && (
              <>
-               {/* FLOW ANALYSIS */}
-               {result.flowAnalysis && (
+               {/* ─── FLOW ANALYSIS (3 cards com descrições detalhadas) ─── */}
+               {flow && (
                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                      <h3 className="font-bold text-slate-800 mb-4 flex items-center">
                         <TrendingDown className="w-5 h-5 mr-2 text-brand-600" />
                         Análise do Fluxo na Cadeia
                      </h3>
-                     <div className="space-y-4">
-                        <div className="flex flex-col md:flex-row gap-4">
-                           <div className="flex-1 bg-slate-50 p-4 rounded-lg border border-slate-100">
-                              <h4 className="font-bold text-slate-700 mb-2 text-sm">1. Fornecedor</h4>
-                              <p className="text-sm text-slate-600">{result.flowAnalysis.step1_supplier_impact}</p>
-                           </div>
-                           <div className="hidden md:flex items-center justify-center text-slate-400">
-                              <ArrowRight className="w-5 h-5" />
-                           </div>
-                           <div className="flex-1 bg-brand-50 p-4 rounded-lg border border-brand-100">
-                              <h4 className="font-bold text-brand-800 mb-2 text-sm">2. Sua Empresa</h4>
-                              <p className="text-sm text-brand-700">{result.flowAnalysis.step2_company_impact}</p>
-                           </div>
-                           <div className="hidden md:flex items-center justify-center text-slate-400">
-                              <ArrowRight className="w-5 h-5" />
-                           </div>
-                           <div className="flex-1 bg-slate-50 p-4 rounded-lg border border-slate-100">
-                              <h4 className="font-bold text-slate-700 mb-2 text-sm">3. Cliente</h4>
-                              <p className="text-sm text-slate-600">{result.flowAnalysis.step3_customer_impact}</p>
-                           </div>
+                     <div className="flex flex-col md:flex-row gap-4">
+                        {/* Card 1: Fornecedor */}
+                        <div className="flex-1 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                           <h4 className="font-bold text-slate-700 mb-2 text-sm flex items-center">
+                             <Factory className="w-4 h-4 mr-1.5 text-slate-500" />
+                             1. Fornecedor
+                           </h4>
+                           <p className="text-sm text-slate-600 leading-relaxed">
+                             {flow.step1_supplier_impact || 'Dados indisponíveis para esta etapa.'}
+                           </p>
+                        </div>
+                        {/* Seta */}
+                        <div className="hidden md:flex items-center justify-center text-slate-300 flex-shrink-0">
+                           <ArrowRight className="w-5 h-5" />
+                        </div>
+                        {/* Card 2: Sua Empresa (destaque) */}
+                        <div className="flex-1 bg-brand-50 p-4 rounded-lg border border-brand-200">
+                           <h4 className="font-bold text-brand-800 mb-2 text-sm flex items-center">
+                             <Building2 className="w-4 h-4 mr-1.5 text-brand-600" />
+                             2. Sua Empresa
+                           </h4>
+                           <p className="text-sm text-brand-700 leading-relaxed">
+                             {flow.step2_company_impact || 'Dados indisponíveis para esta etapa.'}
+                           </p>
+                        </div>
+                        {/* Seta */}
+                        <div className="hidden md:flex items-center justify-center text-slate-300 flex-shrink-0">
+                           <ArrowRight className="w-5 h-5" />
+                        </div>
+                        {/* Card 3: Cliente */}
+                        <div className="flex-1 bg-purple-50 p-4 rounded-lg border border-purple-200">
+                           <h4 className="font-bold text-purple-800 mb-2 text-sm flex items-center">
+                             <ShoppingBag className="w-4 h-4 mr-1.5 text-purple-600" />
+                             3. Cliente
+                           </h4>
+                           <p className="text-sm text-purple-700 leading-relaxed">
+                             {flow.step3_customer_impact || 'Dados indisponíveis para esta etapa.'}
+                           </p>
                         </div>
                      </div>
                   </div>
                )}
 
-               {/* SWOT ANALYSIS */}
-               {result.swotAnalysis && (
+               {/* ─── SWOT ANALYSIS ─── */}
+               {swot && (
                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                      <h3 className="font-bold text-slate-800 mb-4 flex items-center">
                         <AlertTriangle className="w-5 h-5 mr-2 text-brand-600" />
@@ -286,7 +330,7 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
                               <CheckCircle className="w-4 h-4 mr-2" /> Forças
                            </h4>
                            <ul className="list-disc list-inside text-sm text-emerald-700 space-y-1">
-                              {result.swotAnalysis.strengths?.map((s, i) => <li key={i}>{s}</li>)}
+                              {(swot.strengths || []).map((s: string, i: number) => <li key={i}>{s}</li>)}
                            </ul>
                         </div>
                         <div className="bg-red-50 p-4 rounded-lg border border-red-100">
@@ -294,7 +338,7 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
                               <AlertTriangle className="w-4 h-4 mr-2" /> Fraquezas
                            </h4>
                            <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
-                              {result.swotAnalysis.weaknesses?.map((w, i) => <li key={i}>{w}</li>)}
+                              {(swot.weaknesses || []).map((w: string, i: number) => <li key={i}>{w}</li>)}
                            </ul>
                         </div>
                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
@@ -302,7 +346,7 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
                               <TrendingDown className="w-4 h-4 mr-2" /> Oportunidades
                            </h4>
                            <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
-                              {result.swotAnalysis.opportunities?.map((o, i) => <li key={i}>{o}</li>)}
+                              {(swot.opportunities || []).map((o: string, i: number) => <li key={i}>{o}</li>)}
                            </ul>
                         </div>
                         <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
@@ -310,15 +354,15 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
                               <AlertTriangle className="w-4 h-4 mr-2" /> Ameaças
                            </h4>
                            <ul className="list-disc list-inside text-sm text-amber-700 space-y-1">
-                              {result.swotAnalysis.threats?.map((t, i) => <li key={i}>{t}</li>)}
+                              {(swot.threats || []).map((t: string, i: number) => <li key={i}>{t}</li>)}
                            </ul>
                         </div>
                      </div>
                   </div>
                )}
 
-               {/* REGIME COMPARISONS */}
-               {result.companyRegimeComparisons && result.companyRegimeComparisons.length > 0 && (
+               {/* ─── REGIME COMPARISONS TABLE ─── */}
+               {Array.isArray(regimeComps) && regimeComps.length > 0 && (
                  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                     <h3 className="font-bold text-slate-800 mb-4 flex items-center">
                        <TrendingDown className="w-5 h-5 mr-2 text-brand-600" />
@@ -339,26 +383,29 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
                              </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
-                             {result.companyRegimeComparisons?.map((comp, idx) => (
-                               <tr key={idx} className={comp.regime === input.companyRegime ? "bg-brand-50/50" : "hover:bg-slate-50"}>
-                                  <td className="px-4 py-3 font-medium text-slate-800">
-                                    {comp.regime}
-                                    {comp.regime === input.companyRegime && <span className="ml-2 text-[10px] bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-bold">ATUAL</span>}
-                                  </td>
-                                  <td className="px-4 py-3 text-slate-600">{comp.taxBurden}</td>
-                                  <td className="px-4 py-3 text-slate-600">{comp.creditGenerated}</td>
-                                  <td className="px-4 py-3 font-medium text-slate-800">{comp.netResult}</td>
-                                  <td className="px-4 py-3 text-slate-600">{comp.recommendation}</td>
-                               </tr>
-                             ))}
+                             {regimeComps.map((comp: any, idx: number) => {
+                               const isCurrentRegime = comp?.regime?.includes?.(input.companyRegime) || comp?.regime?.includes?.('Atual');
+                               return (
+                                 <tr key={idx} className={isCurrentRegime ? "bg-brand-50/50" : "hover:bg-slate-50"}>
+                                    <td className="px-4 py-3 font-medium text-slate-800">
+                                      {comp?.regime || '-'}
+                                      {isCurrentRegime && <span className="ml-2 text-[10px] bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-bold">ATUAL</span>}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-600">{comp?.taxBurden || '-'}</td>
+                                    <td className="px-4 py-3 text-slate-600">{comp?.creditGenerated || '-'}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-800">{comp?.netResult || '-'}</td>
+                                    <td className="px-4 py-3 text-slate-600">{comp?.recommendation || '-'}</td>
+                                 </tr>
+                               );
+                             })}
                           </tbody>
                        </table>
                     </div>
                  </div>
                )}
 
-               {/* CONCEPTUAL SIMULATION (NEW) */}
-               {simulationMetrics && simulationMetrics.conceptualSimulation && simulationMetrics.conceptualSimulation.length > 0 && (
+               {/* ─── CONCEPTUAL SIMULATION (Tabela DRE: Atual vs Reforma) ─── */}
+               {simulationMetrics && Array.isArray(concepts) && concepts.length > 0 && (
                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
                        <h3 className="font-bold text-slate-800 flex items-center">
@@ -383,17 +430,27 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
                         Comparativo do impacto tributário na formação do preço de custo (líquido de impostos) ao longo da cadeia.
                      </p>
                      
+                     {/* Badges de alíquota */}
                      <div className="flex gap-4 mb-6">
                         <div className="bg-slate-50 px-3 py-2 rounded border border-slate-200 text-xs">
                            <span className="font-bold text-slate-600">Alíquota Atual (PIS/COFINS): </span>
-                           <span className="text-slate-800">{(simulationMetrics.aliq_pis_cofins_presumido * 100).toFixed(2)}%</span>
+                           <span className="text-slate-800">
+                             {typeof simulationMetrics.aliq_pis_cofins_presumido === 'number'
+                               ? (simulationMetrics.aliq_pis_cofins_presumido * 100).toFixed(2)
+                               : '0.00'}%
+                           </span>
                         </div>
                         <div className="bg-brand-50 px-3 py-2 rounded border border-brand-200 text-xs">
                            <span className="font-bold text-brand-700">Alíquota Reforma (IBS/CBS): </span>
-                           <span className="text-brand-900">{(simulationMetrics.aliq_iva * 100).toFixed(2)}%</span>
+                           <span className="text-brand-900">
+                             {typeof simulationMetrics.aliq_iva === 'number'
+                               ? (simulationMetrics.aliq_iva * 100).toFixed(2)
+                               : '0.00'}%
+                           </span>
                         </div>
                      </div>
 
+                     {/* Tabela DRE */}
                      <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
@@ -404,38 +461,49 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-100">
-                              {simulationMetrics.conceptualSimulation.map((row: any, idx: number) => (
-                                <tr key={idx} className="hover:bg-slate-50">
-                                   <td className={`px-4 py-3 text-slate-800 ${row.etapa.includes('(=)') ? 'font-bold' : 'font-medium'}`}>{row.etapa}</td>
-                                   <td className={`px-4 py-3 text-right bg-red-50/10 ${row.etapa.includes('(=)') ? 'font-bold text-red-900' : 'text-slate-600'}`}>{row.atual}</td>
-                                   <td className={`px-4 py-3 text-right bg-green-50/10 ${row.etapa.includes('(=)') ? 'font-bold text-emerald-900' : 'text-slate-600'}`}>{row.reforma}</td>
-                                </tr>
-                              ))}
+                              {concepts.map((row: any, idx: number) => {
+                                const isTotal = row?.etapa?.includes?.('(=)');
+                                return (
+                                  <tr key={idx} className="hover:bg-slate-50">
+                                     <td className={`px-4 py-3 text-slate-800 ${isTotal ? 'font-bold' : 'font-medium'}`}>
+                                       {row?.etapa || '-'}
+                                     </td>
+                                     <td className={`px-4 py-3 text-right bg-red-50/10 ${isTotal ? 'font-bold text-red-900' : 'text-slate-600'}`}>
+                                       {row?.atual || '-'}
+                                     </td>
+                                     <td className={`px-4 py-3 text-right bg-green-50/10 ${isTotal ? 'font-bold text-emerald-900' : 'text-slate-600'}`}>
+                                       {row?.reforma || '-'}
+                                     </td>
+                                  </tr>
+                                );
+                              })}
                            </tbody>
                         </table>
                      </div>
                      
-                     <div className="mt-6 bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div>
-                           <h4 className="font-bold text-slate-800 text-sm mb-1">Impacto no Caixa (Imposto a Pagar)</h4>
-                           <p className="text-sm text-slate-600">
-                             Diferença estimada de imposto pago em dinheiro na etapa da sua empresa.
-                           </p>
-                        </div>
-                        <div className="flex gap-4 text-center">
-                           <div className={`px-4 py-2 rounded border shadow-sm ${simulationMetrics.diff_imposto_pago > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
-                              <div className={`text-xs uppercase font-bold ${simulationMetrics.diff_imposto_pago > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
-                                {simulationMetrics.diff_imposto_pago > 0 ? 'Aumento de Imposto' : 'Redução de Imposto'}
-                              </div>
-                              <div className={`font-bold ${simulationMetrics.diff_imposto_pago > 0 ? 'text-red-900' : 'text-emerald-900'}`}>
-                                R$ {Math.abs(simulationMetrics.diff_imposto_pago).toFixed(2).replace('.', ',')}
-                              </div>
-                           </div>
-                        </div>
-                     </div>
+                     {/* Impacto no Caixa */}
+                     {typeof simulationMetrics.diff_imposto_pago === 'number' && (
+                       <div className="mt-6 bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+                          <div>
+                             <h4 className="font-bold text-slate-800 text-sm mb-1">Impacto no Caixa (Imposto a Pagar)</h4>
+                             <p className="text-sm text-slate-600">
+                               Diferença estimada de imposto pago em dinheiro na etapa da sua empresa.
+                             </p>
+                          </div>
+                          <div className="flex gap-4 text-center">
+                             <div className={`px-4 py-2 rounded border shadow-sm ${simulationMetrics.diff_imposto_pago > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                                <div className={`text-xs uppercase font-bold ${simulationMetrics.diff_imposto_pago > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                                  {simulationMetrics.diff_imposto_pago > 0 ? 'Aumento de Imposto' : 'Redução de Imposto'}
+                                </div>
+                                <div className={`font-bold ${simulationMetrics.diff_imposto_pago > 0 ? 'text-red-900' : 'text-emerald-900'}`}>
+                                  R$ {Math.abs(simulationMetrics.diff_imposto_pago).toFixed(2).replace('.', ',')}
+                                </div>
+                             </div>
+                          </div>
+                       </div>
+                     )}
                   </div>
                )}
-
 
              </>
            )}
