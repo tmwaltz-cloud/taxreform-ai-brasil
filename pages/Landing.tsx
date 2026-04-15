@@ -64,7 +64,7 @@ export const Landing: React.FC<LandingProps> = ({ onEnter, onStartOnboarding }) 
                 <Calculator className="w-5 h-5 text-emerald-400" />
               </div>
               <div>
-                <h3 className="font-bold text-sm text-slate-200">Simulador</h3>
+                <h3 className="font-bold text-sm text-slate-200">Cadeia de Valor</h3>
                 <p className="text-xs text-slate-500 mt-0.5">Cálculo exato de carga e impacto no lucro.</p>
               </div>
             </div>

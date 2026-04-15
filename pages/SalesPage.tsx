@@ -144,11 +144,11 @@ export const SalesPage: React.FC<SalesPageProps> = ({ onBack, onBuy }) => {
               </p>
               <ul className="space-y-2.5">
                 {[
-                  'Simule o impacto na sua cadeia de valor',
-                  'Entenda o Split Payment no seu caixa',
-                  'Saiba quando e como ajustar seus preços',
-                  'Compare regimes: Simples x Híbrido x Presumido',
-                  'JaxAI responde suas dúvidas em linguagem simples',
+                  'Simule o impacto no Lucro Real / Presumido / Híbrido',
+                  'Entenda sua competitividade pós-Reforma',
+                  'Calcule preços com base no novo IVA',
+                  'Gerencie riscos de Split Payment',
+                  'Tenha estratégia, não surpresas',
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
                     <CheckCircle className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
@@ -161,20 +161,14 @@ export const SalesPage: React.FC<SalesPageProps> = ({ onBack, onBuy }) => {
         </div>
       </section>
 
-      {/* ── Ferramentas ── */}
+      {/* ── Features Grid ── */}
       <section className="py-20 px-4 bg-slate-900/30 border-y border-slate-800/50">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-3">O que está dentro da plataforma?</h2>
-          <p className="text-slate-400 text-center mb-12">5 ferramentas de inteligência tributária integradas.</p>
+          <h2 className="text-3xl font-bold text-center mb-3">O que você consegue fazer no TaxReform.ai</h2>
+          <p className="text-slate-400 text-center mb-12 max-w-xl mx-auto">Quatro ferramentas integradas. Inteligência de ponta. Atualizações em tempo real.</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
-              {
-                icon: '🤖',
-                title: 'JaxAI — Consultor IA',
-                desc: 'Pergunte qualquer coisa sobre a Reforma. JaxAI responde com base na LC 214/2025 e dados em tempo real do Google.',
-                tag: 'Powered by Gemini',
-              },
               {
                 icon: '📡',
                 title: 'Radar de Inteligência',
@@ -183,7 +177,7 @@ export const SalesPage: React.FC<SalesPageProps> = ({ onBack, onBuy }) => {
               },
               {
                 icon: '🔗',
-                title: 'Simulador Cadeia de Valor',
+                title: 'Cadeia de Valor',
                 desc: 'Analise o impacto fiscal em cada elo: fornecedor → sua empresa → cliente. Veja quem gera crédito e quem perde.',
                 tag: 'IVA Dual',
               },
@@ -194,97 +188,61 @@ export const SalesPage: React.FC<SalesPageProps> = ({ onBack, onBuy }) => {
                 tag: 'Para contadores',
               },
               {
-                icon: '⚡',
-                title: 'Guias de Ação Práticos',
-                desc: 'Passo a passo para as principais ações: revisar NCMs, simular regimes, preparar o ERP, renegociar contratos.',
-                tag: 'Action plan',
+                icon: '💬',
+                title: 'JaxAI — Consultor Tributário',
+                desc: 'Faça perguntas complexas sobre tributação. Receba análises baseadas em legislação real (não em alucinações).',
+                tag: 'IA Especializada',
               },
               {
-                icon: '⚖️',
+                icon: '⚡',
                 title: 'Intérprete Legislativo',
-                desc: 'Cole qualquer artigo da EC 132, LC 214/2025 ou PLP 68/2024 e receba uma análise em linguagem de negócios.',
+                desc: 'Cole um artigo da lei. Traduzimos para linguagem de negócio com foco em impactos e riscos.',
                 tag: 'EC 132/2023',
               },
-            ].map(({ icon, title, desc, tag }) => (
-              <div key={title} className="bg-slate-800/30 border border-slate-700/40 rounded-xl p-5 hover:border-emerald-700/40 transition">
-                <div className="text-3xl mb-3">{icon}</div>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="text-base font-bold text-slate-100">{title}</h3>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 whitespace-nowrap shrink-0">{tag}</span>
+              {
+                icon: '📊',
+                title: 'Guias de Ação',
+                desc: 'Passo-a-passo prático: como fazer Split Payment no seu ERP, como estruturar o cálculo de créditos, etc.',
+                tag: 'Handbook',
+              },
+            ].map((feature) => (
+              <div key={feature.title} className="rounded-xl p-6 border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/50 transition">
+                <div className="text-4xl mb-3">{feature.icon}</div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="font-bold text-white text-lg">{feature.title}</h3>
+                  <span className="bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">{feature.tag}</span>
                 </div>
-                <p className="text-slate-400 text-xs leading-relaxed">{desc}</p>
+                <p className="text-slate-400 text-sm leading-relaxed">{feature.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Cronograma urgência ── */}
-      <section className="py-20 px-4">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-3">O relógio está correndo</h2>
-          <p className="text-slate-400 text-center mb-10">Cada mês sem preparação é um mês de vantagem para o concorrente.</p>
-
-          <div className="space-y-4">
-            {[
-              { period: 'Jan 2026', status: 'done', label: 'CONCLUÍDO', title: 'IBS e CBS nas notas fiscais', desc: 'Obrigação iniciada. Empresas do regime geral já emitem com os novos campos.' },
-              { period: 'Abr 2026', status: 'current', label: 'AGORA', title: 'Fim da tolerância para erros', desc: 'A Receita Federal encerrou o prazo de tolerância. ERPs devem estar configurados.' },
-              { period: 'Set 2026', status: 'warning', label: 'DECISIVO', title: 'Prazo: Simples Híbrido', desc: 'Empresas do Simples precisam decidir sobre o regime híbrido. Quem perder pode perder clientes B2B em 2027.' },
-              { period: '2027', status: 'upcoming', label: 'CRÍTICO', title: 'Extinção do PIS/COFINS', desc: 'CBS entra com alíquota cheia (~8,8%). Impacto direto no caixa de todas as empresas.' },
-            ].map(({ period, status, label, title, desc }) => {
-              const colors: Record<string, string> = {
-                done: 'border-slate-600 text-slate-500',
-                current: 'border-emerald-500 text-emerald-400',
-                warning: 'border-red-500 text-red-400',
-                upcoming: 'border-amber-500 text-amber-400',
-              };
-              const tagColors: Record<string, string> = {
-                done: 'bg-slate-800 text-slate-500',
-                current: 'bg-emerald-900/50 text-emerald-400',
-                warning: 'bg-red-900/50 text-red-400',
-                upcoming: 'bg-amber-900/50 text-amber-400',
-              };
-              return (
-                <div key={period} className={`flex gap-4 p-4 rounded-xl border ${colors[status]} bg-slate-900/40`}>
-                  <div className="shrink-0 text-right w-20">
-                    <p className="font-bold text-sm">{period}</p>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tagColors[status]}`}>{label}</span>
-                  </div>
-                  <div className="border-l border-slate-700 pl-4">
-                    <p className="font-semibold text-sm text-slate-200 mb-0.5">{title}</p>
-                    <p className="text-xs text-slate-500 leading-relaxed">{desc}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       {/* ── Planos ── */}
-      <section id="planos" className="py-20 px-4 bg-slate-900/40 border-y border-slate-800/50">
+      <section id="planos" className="py-20 px-4">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-3">Escolha seu plano</h2>
-          <p className="text-slate-400 text-center mb-12">Comece grátis. Evolua quando quiser.</p>
+          <p className="text-slate-400 text-center mb-12 max-w-xl mx-auto">Comece grátis. Upgrade quando precisar. Sem surpresas.</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
                 name: 'Freemium',
                 price: 'Grátis',
-                period: '',
-                tag: '🎁 7 dias',
+                period: ' para sempre',
+                tag: 'Popular',
                 highlight: false,
                 badge: null,
-                desc: 'Experimente sem compromisso.',
-                features: ['Notícias em tempo real', 'Cronograma dinâmico', 'JaxAI — 3 perguntas/dia', 'Dashboard'],
-                missing: ['Cadeia de Valor', 'Guia do Contador 4.0', 'Guias de Ação', 'Intérprete Legislativo'],
-                cta: 'Começar Grátis',
-                action: () => onBuy(),
+                desc: 'Ideal para começar. Sem cartão de crédito.',
+                features: ['Radar de Inteligência', 'JaxAI — 3 perguntas/dia', 'Intérprete — 3/dia', 'Acesso básico a Guias de Ação'],
+                missing: ['Cadeia de Valor', 'Guia do Contador 4.0', 'Suporte prioritário'],
+                cta: 'Começar agora',
+                action: () => { onBuy(); },
               },
               {
                 name: 'Mensal',
-                price: 'R$27',
+                price: 'R$19',
                 period: '/mês',
                 tag: null,
                 highlight: false,
