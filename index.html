@@ -3,13 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="https://vitejs.dev/logo.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0284c7" />
+    <meta name="description" content="TaxReform.ai Brasil - Plataforma de Inteligência Tributária com IA para diagnóstico fiscal e planejamento tributário." />
     <title>TaxReform.ai Brasil - Inteligência Tributária</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
+          screens: {
+            'sm': '640px',
+            'md': '768px',
+            'lg': '1024px',
+            'xl': '1280px',
+            '2xl': '1536px',
+          },
           extend: {
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
@@ -30,9 +41,56 @@
       }
     </script>
     <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      html {
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f8fafc;
+        overflow-x: hidden;
+      }
+      
+      /* Previne horizontal scroll em mobile */
+      @media (max-width: 640px) {
+        body {
+          width: 100vw;
+          overflow-x: hidden;
+        }
+        
+        main, nav, aside, section, div {
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+      }
+      
+      /* Sidebar responsivo */
+      .sidebar {
+        transition: transform 0.3s ease;
+      }
+      
+      @media (max-width: 768px) {
+        .sidebar {
+          position: fixed;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100vh;
+          z-index: 40;
+          transform: translateX(-100%);
+        }
+        
+        .sidebar.open {
+          transform: translateX(0);
+        }
       }
     </style>
   </head>

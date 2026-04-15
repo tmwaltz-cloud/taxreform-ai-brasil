@@ -60,7 +60,8 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<PageType>('landing');
   const [selectedPlanId, setSelectedPlanId] = useState<PlanId | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Sempre fechado por padrão
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
   // ─── Popups ───────────────────────────────────────────────
   const [showStartupPopup, setShowStartupPopup] = useState(false);
@@ -79,6 +80,20 @@ const App: React.FC = () => {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // ─── Detectar mudanças de tamanho de tela (mobile/desktop) ─
+  useEffect(() => {
+    const handleResize = () => {
+      const newIsMobile = window.innerWidth < 1024;
+      setIsMobile(newIsMobile);
+      if (newIsMobile) {
+        setSidebarOpen(false); // Fechar sidebar ao voltar para mobile
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // ─── Rota inicial após auth ───────────────────────────────
@@ -227,36 +242,55 @@ const App: React.FC = () => {
 
   // ─── Layout com sidebar + header ─────────────────────────
   return (
-    <div className="flex h-screen bg-gray-950 overflow-hidden">
-      {sidebarOpen && (
+    <div className="flex flex-col lg:flex-row h-screen w-screen bg-gray-950 overflow-hidden">
+      {/* Overlay no mobile quando sidebar está aberto */}
+      {sidebarOpen && isMobile && (
         <div
           className="fixed inset-0 bg-black/60 z-20 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      <Sidebar
-        currentPage={currentPage}
-        onNavigate={navigate}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        selectedPlanId={selectedPlanId}
-        session={session}
-      />
+      {/* Sidebar */}
+      <div
+        className={`
+          fixed lg:static
+          left-0 top-0
+          w-64 h-screen
+          bg-gray-900
+          z-30 lg:z-0
+          transform transition-transform duration-300 ease-in-out
+          lg:transform-none
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+      >
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={navigate}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          selectedPlanId={selectedPlanId}
+          session={session}
+        />
+      </div>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 w-full lg:w-auto overflow-hidden">
         <Header
           userRole={userRole}
           onRoleChange={() => {}}
           onNavigateToProfile={() => {}}
           onNavigateHome={() => navigate('dashboard')}
           onNavigateToAdmin={isAdmin ? () => navigate('admin') : undefined}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          isMobile={isMobile}
         />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto w-full px-2 sm:px-4 md:px-6 lg:px-8">
           {renderPlatformPage()}
         </main>
       </div>
 
+      {/* Popups */}
       {showStartupPopup && (
         <StartupPopup onClose={() => setShowStartupPopup(false)} />
       )}
