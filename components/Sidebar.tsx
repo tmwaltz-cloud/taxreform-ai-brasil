@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { PageType, PlanId } from '../App';
 import {
@@ -175,3 +175,4 @@ const Sidebar: React.FC<SidebarProps> = ({
 };
 
 export default Sidebar;
+
