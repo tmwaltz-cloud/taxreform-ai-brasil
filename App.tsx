@@ -157,21 +157,33 @@ const App: React.FC = () => {
           setDaysLeft(Math.max(0, diff));
         }
 
-        // ── Proteção anti troca de email (fingerprint) ───────────────────
-        // Registra o fingerprint do dispositivo na primeira vez que o freemium é usado
+        // ── Proteção anti troca de email — server-side via Supabase RPC ──
+        // Usa a função check_device_fingerprint criada no banco (migration_v3.sql)
+        // Não depende de localStorage — não adianta limpar o cache do browser
         if (data.plan_id === 'free' || !data.plan_id) {
           const fp = getDeviceFingerprint();
-          const fpKey = `_fp_uid_${fp}`;
-          const registeredUid = localStorage.getItem(fpKey);
-          if (!registeredUid) {
-            localStorage.setItem(fpKey, session.user.id);
-          } else if (registeredUid !== session.user.id) {
-            // Mesmo dispositivo, usuário diferente → bloqueia novo trial
-            await supabase
-              .from('user_profiles')
-              .update({ plan_status: 'suspended', plan_id: 'free' })
-              .eq('user_id', session.user.id);
-            setUserPlanStatus('suspended');
+          try {
+            const { data: fpResult } = await supabase.rpc('check_device_fingerprint', {
+              p_user_id: session.user.id,
+              p_fingerprint: fp,
+            });
+            if (fpResult?.blocked) {
+              setUserPlanStatus('suspended');
+            }
+          } catch (fpErr) {
+            console.warn('[Fingerprint] RPC falhou, usando fallback localStorage:', fpErr);
+            // Fallback local caso a RPC não esteja disponível
+            const fpKey = `_fp_uid_${fp}`;
+            const registeredUid = localStorage.getItem(fpKey);
+            if (!registeredUid) {
+              localStorage.setItem(fpKey, session.user.id);
+            } else if (registeredUid !== session.user.id) {
+              await supabase
+                .from('user_profiles')
+                .update({ plan_status: 'suspended' })
+                .eq('user_id', session.user.id);
+              setUserPlanStatus('suspended');
+            }
           }
         }
       }

@@ -151,12 +151,14 @@ const newsCache: { data: NewsItem[] | null; timestamp: number } = { data: null, 
 
 export const fetchTaxNews = async (userRole?: UserRole, topic?: string): Promise<NewsItem[]> => {
   const now = Date.now();
-  if (!topic && newsCache.data && now - newsCache.timestamp < 900000) return newsCache.data;
+  // Cache de 12 horas
+  if (!topic && newsCache.data && now - newsCache.timestamp < 43_200_000) return newsCache.data;
   checkRateLimit('news');
   const currentDate = new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const roleContext = userRole ? `Perfil: ${userRole}.` : '';
-  const topicFilter = topic ? `Filtre pelo tema: ${topic}.` : '';
-  const prompt = `DATA ATUAL: ${currentDate}\nVocê é analista tributário. Busque notícias sobre Reforma Tributária Brasileira.\n${roleContext}\n${topicFilter}\nRetorne APENAS JSON: array de objetos com: id, title, summary, source, date, category, urgency (low|medium|high), impactLevel (Alto|Médio|Baixo), url.\nMáximo 8 itens.`;
+  const cutoffDate  = new Date(now - 15 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR');
+  const roleContext = userRole ? `Perfil do usuário: ${userRole}. Priorize notícias relevantes para este perfil.` : '';
+  const topicFilter = topic ? `Filtre exclusivamente pelo tema: ${topic}.` : '';
+  const prompt = `DATA ATUAL: ${currentDate}\nJANELA: notícias dos últimos 15 dias (desde ${cutoffDate}).\nVocê é analista tributário sênior. Use busca para encontrar notícias REAIS e RECENTES sobre Reforma Tributária Brasileira.\n${roleContext}\n${topicFilter}\nFoco: IBS, CBS, LC 214/2025, Split Payment, Simples Nacional, CGIBS.\nRetorne APENAS JSON: array com id (string), title, summary (2-3 frases), source, date (dd/mm/aaaa), category, urgency (low|medium|high), impactLevel (Alto|Médio|Baixo), url.\nMáximo 8 itens. Ordene do mais recente ao mais antigo. NUNCA invente notícias.`;
   try {
     const data = await withModelFallback(async (model) => {
       const response = await ai.models.generateContent({ model, contents: prompt, config: { tools: [{ googleSearch: {} }], systemInstruction: SYSTEM_INSTRUCTION_BASE } });
