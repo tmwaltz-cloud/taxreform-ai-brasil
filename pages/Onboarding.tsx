@@ -3,29 +3,25 @@ import { Activity, ArrowRight, ArrowLeft, Wallet, TrendingUp, AlertOctagon } fro
 import { fetchReformTimeline, TimelineItem } from '../services/geminiService';
 
 interface OnboardingProps {
-  onComplete: () => void;
-  onLearnMore: () => void;
+  onComplete: () => void;   // chamado ao final → vai para pricing
+  onLearnMore: () => void;  // botão "Pular" → vai para pricing
   initialStep?: number;
 }
 
-// ─── Cores e ícones por status ─────────────────────────────────────────────
 const statusConfig: Record<TimelineItem['status'], { dot: string; tag: string; text: string }> = {
-  done:     { dot: 'border-slate-500 bg-slate-900',   tag: 'bg-slate-700 text-slate-300',      text: 'text-slate-400' },
-  current:  { dot: 'border-emerald-400 bg-slate-900 ring-2 ring-emerald-400/30', tag: 'bg-emerald-500 text-white', text: 'text-slate-200' },
-  warning:  { dot: 'border-red-500 bg-slate-900 animate-pulse', tag: 'bg-red-500 text-white',  text: 'text-slate-200' },
-  upcoming: { dot: 'border-amber-400 bg-slate-900',   tag: 'bg-amber-500 text-black',          text: 'text-slate-300' },
-  future:   { dot: 'border-slate-600 bg-slate-900',   tag: 'bg-slate-800 text-slate-500',      text: 'text-slate-500' },
+  done:     { dot: 'border-slate-500 bg-slate-900',                           tag: 'bg-slate-700 text-slate-300',   text: 'text-slate-400' },
+  current:  { dot: 'border-emerald-400 bg-slate-900 ring-2 ring-emerald-400/30', tag: 'bg-emerald-500 text-white',  text: 'text-slate-200' },
+  warning:  { dot: 'border-red-500 bg-slate-900 animate-pulse',               tag: 'bg-red-500 text-white',         text: 'text-slate-200' },
+  upcoming: { dot: 'border-amber-400 bg-slate-900',                           tag: 'bg-amber-500 text-black',       text: 'text-slate-300' },
+  future:   { dot: 'border-slate-600 bg-slate-900',                           tag: 'bg-slate-800 text-slate-500',   text: 'text-slate-500' },
 };
 
-// ─── Componente do cronograma dinâmico ─────────────────────────────────────
 const DynamicTimeline: React.FC = () => {
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchReformTimeline()
-      .then(setItems)
-      .finally(() => setLoading(false));
+    fetchReformTimeline().then(setItems).finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -65,9 +61,7 @@ const DynamicTimeline: React.FC = () => {
             <p className={`font-semibold text-sm mb-0.5 ${item.status === 'future' ? 'text-slate-500' : 'text-slate-200'}`}>
               {item.title}
             </p>
-            <p className={`text-xs leading-relaxed ${cfg.text}`}>
-              {item.description}
-            </p>
+            <p className={`text-xs leading-relaxed ${cfg.text}`}>{item.description}</p>
           </div>
         );
       })}
@@ -78,15 +72,13 @@ const DynamicTimeline: React.FC = () => {
   );
 };
 
-// ─── Componente principal ──────────────────────────────────────────────────
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onLearnMore, initialStep = 0 }) => {
   const [currentStep, setCurrentStep] = useState(initialStep);
 
   const steps = [
-    // Step 0: Welcome / The Hook
     {
-      title: "Domine a Reforma Tributária",
-      subtitle: "A maior mudança fiscal dos últimos 50 anos começou.",
+      title: 'Domine a Reforma Tributária',
+      subtitle: 'A maior mudança fiscal dos últimos 50 anos começou.',
       content: (
         <div className="space-y-6">
           <p className="text-lg text-slate-300 leading-relaxed">
@@ -97,27 +89,26 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onLearnMore,
             <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
               <AlertOctagon className="w-8 h-8 text-red-500 mb-2" />
               <h3 className="font-bold text-white">Risco Imediato</h3>
-              <p className="text-sm text-slate-400">Multas por erro no cClassTrib e bloqueio de caixa pelo Split Payment.</p>
+              <p className="text-sm text-slate-400">Multas por erro na NF-e e bloqueio de caixa pelo Split Payment já em 2026.</p>
             </div>
             <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
               <TrendingUp className="w-8 h-8 text-emerald-500 mb-2" />
               <h3 className="font-bold text-white">Oportunidade</h3>
-              <p className="text-sm text-slate-400">Quem dominar os créditos tributários terá o preço mais competitivo.</p>
+              <p className="text-sm text-slate-400">Quem dominar os créditos tributários terá o preço mais competitivo no mercado B2B.</p>
             </div>
           </div>
         </div>
       ),
     },
-    // Step 1: Structural Changes
     {
-      title: "O Que Muda na Prática?",
-      subtitle: "3 Pilares que vão alterar sua precificação.",
+      title: 'O Que Muda na Prática?',
+      subtitle: '3 Pilares que vão alterar sua precificação.',
       content: (
         <div className="grid grid-cols-1 gap-4">
           <div className="bg-slate-800 p-4 rounded-xl border-l-4 border-emerald-500">
             <h3 className="font-bold text-white text-lg flex items-center mb-1">
               <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded mr-2">1</span>
-              Destino (Onde consome)
+              Destino — onde o cliente consome
             </h3>
             <p className="text-slate-400 text-sm">
               O imposto deixa de ser devido onde você produz e passa a ser devido onde o cliente está.
@@ -141,16 +132,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onLearnMore,
             </h3>
             <p className="text-slate-400 text-sm">
               Tudo gera crédito: energia, marketing, uso e consumo.
-              <br /><span className="text-amber-300">Impacto:</span> Empresas no Lucro Real/Híbrido podem se tornar muito mais competitivas para clientes B2B.
+              <br /><span className="text-amber-300">Impacto:</span> Empresas no Lucro Real/Híbrido tornam-se muito mais competitivas para clientes B2B.
             </p>
           </div>
         </div>
       ),
     },
-    // Step 2: Split Payment
     {
-      title: "Alerta de Caixa: Split Payment",
-      subtitle: "O dinheiro não entra mais todo na sua conta.",
+      title: 'Alerta de Caixa: Split Payment',
+      subtitle: 'O dinheiro não entra mais todo na sua conta.',
       content: (
         <div className="space-y-6">
           <div className="bg-red-500/10 border border-red-500/50 p-6 rounded-xl flex items-start gap-4">
@@ -158,46 +148,33 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onLearnMore,
             <div>
               <h3 className="font-bold text-white text-lg">Bloqueio Automático na Fonte</h3>
               <p className="text-slate-300 mt-2 text-sm leading-relaxed">
-                Ao passar o cartão ou pagar um boleto/Pix, o banco irá <strong>separar automaticamente</strong> a parte do imposto (IBS/CBS) e enviar direto ao governo.
+                Ao receber um Pix ou boleto, o banco irá <strong>separar automaticamente</strong> a parte do imposto (IBS/CBS) e enviar direto ao governo.
               </p>
               <p className="text-white font-bold mt-2 text-sm">
                 ⚠️ Você só recebe o valor líquido. Se seu capital de giro depende do "float" do imposto a pagar no dia 20, sua empresa vai parar.
               </p>
             </div>
           </div>
-          <div className="text-center">
-            <p className="text-slate-400 text-sm">
-              Nossa plataforma simula exatamente qual será seu novo fluxo de caixa líquido.
-            </p>
-          </div>
+          <p className="text-slate-400 text-sm text-center">
+            Nossa plataforma simula exatamente qual será seu novo fluxo de caixa líquido após o Split Payment.
+          </p>
         </div>
       ),
     },
-    // Step 3: Cronograma DINÂMICO ✨
     {
-      title: "Cronograma Crítico",
-      subtitle: "Datas atualizadas automaticamente via IA.",
+      title: 'Cronograma Crítico',
+      subtitle: 'Datas atualizadas automaticamente via IA.',
       content: <DynamicTimeline />,
     },
   ];
 
-  const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      onComplete();
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentStep > 0) setCurrentStep(currentStep - 1);
-  };
+  const isLast = currentStep === steps.length - 1;
 
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col relative overflow-hidden">
       <div className="absolute top-0 right-0 w-2/3 h-2/3 bg-emerald-900/10 rounded-bl-full -z-0 pointer-events-none blur-3xl" />
 
-      {/* Progress Bar */}
+      {/* Barra de progresso */}
       <div className="absolute top-0 left-0 w-full h-1 bg-slate-800 z-20">
         <div
           className="h-full bg-emerald-500 transition-all duration-500 ease-out"
@@ -205,65 +182,71 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onLearnMore,
         />
       </div>
 
-      <nav className="p-6 md:p-8 z-10 flex items-center justify-between flex-shrink-0">
+      <nav className="p-4 sm:p-6 md:p-8 z-10 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center">
-          <Activity className="h-8 w-8 text-emerald-500" />
-          <span className="ml-3 font-bold text-xl tracking-tight">
+          <Activity className="h-6 sm:h-8 w-6 sm:w-8 text-emerald-500" />
+          <span className="ml-2 sm:ml-3 font-bold text-base sm:text-xl tracking-tight">
             TaxReform<span className="text-emerald-500">.ai Brasil</span>
           </span>
         </div>
-        <div className="text-sm font-medium text-slate-400 hidden md:block">
-          Passo {currentStep + 1} de {steps.length}
+        <div className="text-xs sm:text-sm font-medium text-slate-400">
+          {currentStep + 1} / {steps.length}
         </div>
       </nav>
 
-      <main className="flex-1 flex flex-col items-center justify-center p-6 text-center z-10 max-w-4xl mx-auto w-full my-auto">
-        <div className="w-full bg-slate-800/30 backdrop-blur-md border border-slate-700/50 p-8 md:p-12 rounded-3xl shadow-2xl">
-          <h1 className="text-3xl md:text-5xl font-bold mb-2 text-white">
+      <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 z-10 max-w-4xl mx-auto w-full my-auto">
+        <div className="w-full bg-slate-800/30 backdrop-blur-md border border-slate-700/50 p-6 sm:p-8 md:p-12 rounded-2xl sm:rounded-3xl shadow-2xl">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-2 text-white text-center">
             {steps[currentStep].title}
           </h1>
-          <p className="text-lg text-emerald-400 font-medium mb-8">
+          <p className="text-base sm:text-lg text-emerald-400 font-medium mb-6 sm:mb-8 text-center">
             {steps[currentStep].subtitle}
           </p>
 
-          <div className="text-left min-h-[300px] flex flex-col justify-center">
+          <div className="text-left min-h-[260px] sm:min-h-[300px] flex flex-col justify-center">
             {steps[currentStep].content}
           </div>
 
-          <div className="mt-10 flex items-center justify-between border-t border-slate-700/50 pt-8">
+          <div className="mt-8 sm:mt-10 flex items-center justify-between border-t border-slate-700/50 pt-6 sm:pt-8">
             <button
-              onClick={handlePrev}
+              onClick={() => currentStep > 0 && setCurrentStep(currentStep - 1)}
               disabled={currentStep === 0}
-              className={`flex items-center text-slate-400 hover:text-white transition ${currentStep === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+              className={`flex items-center text-slate-400 hover:text-white transition text-sm ${currentStep === 0 ? 'opacity-0 pointer-events-none' : ''}`}
             >
-              <ArrowLeft className="w-5 h-5 mr-2" /> Anterior
+              <ArrowLeft className="w-4 h-4 mr-1.5" /> Anterior
             </button>
 
             <div className="flex space-x-2">
               {steps.map((_, idx) => (
                 <div
                   key={idx}
-                  className={`w-2.5 h-2.5 rounded-full transition-all ${idx === currentStep ? 'bg-emerald-500 scale-125' : 'bg-slate-700'}`}
+                  className={`w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full transition-all ${idx === currentStep ? 'bg-emerald-500 scale-125' : 'bg-slate-700'}`}
                 />
               ))}
             </div>
 
             <button
-              onClick={handleNext}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg flex items-center"
+              onClick={() => {
+                if (isLast) {
+                  onComplete(); // → vai para pricing
+                } else {
+                  setCurrentStep(currentStep + 1);
+                }
+              }}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 sm:py-3 px-5 sm:px-8 rounded-xl transition-all shadow-lg flex items-center text-sm sm:text-base"
             >
-              {currentStep === steps.length - 1 ? 'Acessar Plataforma' : 'Próximo'}
-              <ArrowRight className="ml-2 w-5 h-5" />
+              {isLast ? 'Ver planos e começar' : 'Próximo'}
+              <ArrowRight className="ml-2 w-4 sm:w-5 h-4 sm:h-5" />
             </button>
           </div>
         </div>
 
         {currentStep === 0 && (
           <button
-            onClick={onComplete}
-            className="mt-8 text-slate-500 hover:text-slate-300 text-sm underline transition"
+            onClick={onLearnMore}
+            className="mt-6 sm:mt-8 text-slate-500 hover:text-slate-300 text-xs sm:text-sm underline transition"
           >
-            Pular introdução e ir para o sistema
+            Pular introdução e ver planos
           </button>
         )}
       </main>

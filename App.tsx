@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
 
-// Pages — todos com export nomeado
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { SignUp } from './pages/SignUp';
@@ -18,94 +17,207 @@ import { Onboarding } from './pages/Onboarding';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { Admin } from './pages/Admin';
 
-// Components
 import Sidebar from './components/Sidebar';
 import { Header } from './components/Header';
 import { StartupPopup } from './components/StartupPopup';
 import { MotorTributarioPopup } from './components/MotorTributarioPopup';
 import { UpsellPopup } from './components/UpsellPopup';
 
-// ─── Email do administrador ───────────────────────────────────────────────────
-const ADMIN_EMAIL = 'tmwaltz@gmail.com'; // ← altere para o seu email real
+const ADMIN_EMAIL = 'tmwaltz@gmail.com';
 
 export type PageType =
-  | 'landing'
-  | 'login'
-  | 'signup'
-  | 'pricing'
-  | 'sales'
-  | 'onboarding'
-  | 'forgot-password'
-  | 'dashboard'
-  | 'consultant'
-  | 'interpreter'
-  | 'supply-chain'
-  | 'accountant-guide'
-  | 'action-guide'
-  | 'admin';
+  | 'landing' | 'login' | 'signup' | 'pricing' | 'sales'
+  | 'onboarding' | 'forgot-password' | 'dashboard' | 'consultant'
+  | 'interpreter' | 'supply-chain' | 'accountant-guide' | 'action-guide' | 'admin';
 
 export type PlanId = 'free' | 'monthly' | 'lifetime';
 
+const PLAN_LABELS: Record<PlanId, { label: string; icon: string }> = {
+  free:     { label: 'Plano Freemium',  icon: '👑' },
+  monthly:  { label: 'Plano Mensal',    icon: '⚡' },
+  lifetime: { label: 'Plano Vitalício', icon: '💎' },
+};
+
 const PLATFORM_PAGES: PageType[] = [
-  'dashboard',
-  'consultant',
-  'interpreter',
-  'supply-chain',
-  'accountant-guide',
-  'action-guide',
+  'dashboard', 'consultant', 'interpreter',
+  'supply-chain', 'accountant-guide', 'action-guide',
 ];
 
+// ─── Pop-up freemium: dias restantes ────────────────────────────────────────
+const FreemiumPopup: React.FC<{
+  daysLeft: number;
+  onClose: () => void;
+  onUpgrade: () => void;
+}> = ({ daysLeft, onClose, onUpgrade }) => (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div className="bg-gray-900 border border-amber-500/30 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
+      <div className="text-4xl">⏳</div>
+      <h3 className="text-lg font-bold text-white">
+        {daysLeft > 0
+          ? `Faltam ${daysLeft} dia${daysLeft !== 1 ? 's' : ''} para seu acesso expirar`
+          : 'Seu período gratuito encerrou'}
+      </h3>
+      <p className="text-gray-400 text-sm leading-relaxed">
+        {daysLeft > 0
+          ? 'Você está no plano Freemium. Assine agora para não perder o acesso completo à plataforma.'
+          : 'Seu período de 7 dias gratuitos acabou. Escolha um plano para continuar usando todos os recursos.'}
+      </p>
+      <button
+        onClick={onUpgrade}
+        className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold text-sm hover:from-emerald-400 hover:to-cyan-400 transition"
+      >
+        Ver planos e assinar agora →
+      </button>
+      {daysLeft > 0 && (
+        <button onClick={onClose} className="text-gray-600 hover:text-gray-400 text-xs underline transition">
+          Continuar com o Freemium por enquanto
+        </button>
+      )}
+    </div>
+  </div>
+);
+
+// ─── Lógica de fingerprint anti troca de email ───────────────────────────────
+// Gera um ID estável baseado em características do browser (não muda ao trocar email)
+function getDeviceFingerprint(): string {
+  const existing = localStorage.getItem('_dev_fp');
+  if (existing) return existing;
+  const fp = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency ?? '',
+  ].join('|');
+  // hash simples
+  let hash = 0;
+  for (let i = 0; i < fp.length; i++) {
+    hash = ((hash << 5) - hash) + fp.charCodeAt(i);
+    hash |= 0;
+  }
+  const id = Math.abs(hash).toString(36);
+  localStorage.setItem('_dev_fp', id);
+  return id;
+}
+
+// ─── App ─────────────────────────────────────────────────────────────────────
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<PageType>('landing');
   const [selectedPlanId, setSelectedPlanId] = useState<PlanId | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Sempre fechado por padrão
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
-  // ─── Popups ───────────────────────────────────────────────
+  // Plano real do Supabase
+  const [userPlanId, setUserPlanId] = useState<PlanId>('free');
+  const [userPlanStatus, setUserPlanStatus] = useState<string>('trialing');
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [daysLeft, setDaysLeft] = useState<number>(7);
+
+  // Popups
   const [showStartupPopup, setShowStartupPopup] = useState(false);
   const [showMotorPopup, setShowMotorPopup] = useState(false);
   const [showUpsellPopup, setShowUpsellPopup] = useState(false);
+  const [showFreemiumPopup, setShowFreemiumPopup] = useState(false);
 
-  // ─── Auth listener ────────────────────────────────────────
+  // ─── Auth ───────────────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  // ─── Detectar mudanças de tamanho de tela (mobile/desktop) ─
+  // ─── Carregar perfil do usuário (plano real) ─────────────────────────────
   useEffect(() => {
-    const handleResize = () => {
-      const newIsMobile = window.innerWidth < 1024;
-      setIsMobile(newIsMobile);
-      if (newIsMobile) {
-        setSidebarOpen(false); // Fechar sidebar ao voltar para mobile
+    if (!session?.user?.id) return;
+
+    const loadProfile = async () => {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('plan_id, plan_status, trial_ends_at')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (!error && data) {
+        setUserPlanId((data.plan_id as PlanId) || 'free');
+        setUserPlanStatus(data.plan_status || 'trialing');
+        setTrialEndsAt(data.trial_ends_at);
+
+        // Calcular dias restantes do trial
+        if (data.trial_ends_at) {
+          const end = new Date(data.trial_ends_at);
+          const now = new Date();
+          const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          setDaysLeft(Math.max(0, diff));
+        }
+
+        // ── Proteção anti troca de email (fingerprint) ───────────────────
+        // Registra o fingerprint do dispositivo na primeira vez que o freemium é usado
+        if (data.plan_id === 'free' || !data.plan_id) {
+          const fp = getDeviceFingerprint();
+          const fpKey = `_fp_uid_${fp}`;
+          const registeredUid = localStorage.getItem(fpKey);
+          if (!registeredUid) {
+            localStorage.setItem(fpKey, session.user.id);
+          } else if (registeredUid !== session.user.id) {
+            // Mesmo dispositivo, usuário diferente → bloqueia novo trial
+            await supabase
+              .from('user_profiles')
+              .update({ plan_status: 'suspended', plan_id: 'free' })
+              .eq('user_id', session.user.id);
+            setUserPlanStatus('suspended');
+          }
+        }
       }
     };
 
+    loadProfile();
+  }, [session]);
+
+  // ─── Resize ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleResize = () => {
+      const m = window.innerWidth < 1024;
+      setIsMobile(m);
+      if (m) setSidebarOpen(false);
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ─── Rota inicial após auth ───────────────────────────────
+  // ─── Rota inicial após auth ──────────────────────────────────────────────
   useEffect(() => {
     if (loading) return;
     if (session) {
-      const isPublicPage = ['landing', 'login', 'signup', 'pricing', 'sales'].includes(currentPage);
-      if (isPublicPage) setCurrentPage('dashboard');
+      const isPublic = ['landing', 'login', 'signup', 'pricing', 'sales'].includes(currentPage);
+      if (isPublic) setCurrentPage('dashboard');
     }
   }, [session, loading]);
 
-  // ─── Controle de popups na plataforma ────────────────────
+  // ─── Pop-up freemium ao entrar na plataforma ─────────────────────────────
+  useEffect(() => {
+    if (!session || !PLATFORM_PAGES.includes(currentPage)) return;
+    if (userPlanId !== 'free') return;
+
+    const lastShown = localStorage.getItem('_freemium_popup_date');
+    const today = new Date().toDateString();
+
+    // Mostrar uma vez por dia para usuários freemium
+    if (lastShown !== today) {
+      setTimeout(() => {
+        setShowFreemiumPopup(true);
+        localStorage.setItem('_freemium_popup_date', today);
+      }, 2000);
+    }
+  }, [currentPage, session, userPlanId]);
+
+  // ─── Outros popups ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!session || !PLATFORM_PAGES.includes(currentPage)) return;
 
@@ -113,14 +225,6 @@ const App: React.FC = () => {
     if (!hasSeenStartup) {
       setShowStartupPopup(true);
       localStorage.setItem('taxreform_startup_seen', 'true');
-      return;
-    }
-
-    const accessCount = parseInt(localStorage.getItem('taxreform_access_count') || '0') + 1;
-    localStorage.setItem('taxreform_access_count', String(accessCount));
-
-    if (accessCount === 2 && selectedPlanId === 'free') {
-      setTimeout(() => setShowUpsellPopup(true), 3000);
       return;
     }
 
@@ -133,7 +237,7 @@ const App: React.FC = () => {
     return () => clearTimeout(motorTimer);
   }, [currentPage, session]);
 
-  // ─── Navegação ────────────────────────────────────────────
+  // ─── Navegação ───────────────────────────────────────────────────────────
   const navigate = (page: PageType) => {
     setCurrentPage(page);
     setSidebarOpen(false);
@@ -141,26 +245,27 @@ const App: React.FC = () => {
 
   const handlePlanSelect = (planId: PlanId) => {
     setSelectedPlanId(planId);
-    setCurrentPage('signup');
+    navigate('signup');
   };
 
   const handleSignUpSuccess = (planId: PlanId) => {
     if (planId === 'free') {
-      setCurrentPage('onboarding');
+      navigate('onboarding');
     } else {
-      setCurrentPage('login');
+      navigate('login');
     }
   };
 
-  const handleOnboardingComplete = () => {
-    setCurrentPage('dashboard');
-  };
+  const handleOnboardingComplete = () => navigate('dashboard');
 
   const userRole = session?.user?.user_metadata?.role;
   const userPhone = session?.user?.user_metadata?.phone ?? '';
   const isAdmin = session?.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
-  // ─── Loading splash ───────────────────────────────────────
+  // Dado do plano para o Sidebar
+  const planInfo = PLAN_LABELS[userPlanId] ?? PLAN_LABELS.free;
+
+  // ─── Loading ─────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -172,7 +277,7 @@ const App: React.FC = () => {
     );
   }
 
-  // ─── Sem sessão → páginas públicas ───────────────────────
+  // ─── Sem sessão: páginas públicas ────────────────────────────────────────
   if (!session) {
     switch (currentPage) {
       case 'login':
@@ -192,23 +297,29 @@ const App: React.FC = () => {
       case 'forgot-password':
         return <ForgotPassword onNavigate={navigate} />;
       case 'onboarding':
-        return <Onboarding onComplete={handleOnboardingComplete} onLearnMore={() => navigate('pricing')} />;
+        return (
+          <Onboarding
+            onComplete={() => navigate('pricing')}
+            onLearnMore={() => navigate('pricing')}
+          />
+        );
       default:
-        return <Landing onEnter={() => navigate('login')} onStartOnboarding={() => navigate('signup')} />;
+        return (
+          <Landing
+            onEnter={() => navigate('login')}
+            onStartOnboarding={() => navigate('onboarding')}
+          />
+        );
     }
   }
 
-  // ─── Painel Admin (tela cheia, sem sidebar) ───────────────
+  // ─── Admin ───────────────────────────────────────────────────────────────
   if (currentPage === 'admin') {
-    if (!isAdmin) {
-      // Segurança: redireciona se não for admin
-      navigate('dashboard');
-      return null;
-    }
+    if (!isAdmin) { navigate('dashboard'); return null; }
     return <Admin onBack={() => navigate('dashboard')} />;
   }
 
-  // ─── Páginas da plataforma ────────────────────────────────
+  // ─── Plataforma ──────────────────────────────────────────────────────────
   const renderPlatformPage = () => {
     switch (currentPage) {
       case 'consultant':
@@ -222,13 +333,11 @@ const App: React.FC = () => {
       case 'action-guide':
         return (
           <ActionGuide
-            actionId=""
-            actionTitle=""
+            actionId="" actionTitle=""
             onNavigateHome={() => navigate('dashboard')}
             onNavigateToInterpreter={() => navigate('interpreter')}
           />
         );
-      case 'dashboard':
       default:
         return (
           <Dashboard
@@ -240,41 +349,27 @@ const App: React.FC = () => {
     }
   };
 
-  // ─── Layout com sidebar + header ─────────────────────────
   return (
     <div className="flex flex-col lg:flex-row h-screen w-screen bg-gray-950 overflow-hidden">
-      {/* Overlay no mobile quando sidebar está aberto */}
       {sidebarOpen && isMobile && (
-        <div
-          className="fixed inset-0 bg-black/60 z-20 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <div
-        className={`
-          fixed lg:static
-          left-0 top-0
-          w-64 h-screen
-          bg-gray-900
-          z-30 lg:z-0
-          transform transition-transform duration-300 ease-in-out
-          lg:transform-none
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
-      >
+      <div className={`fixed lg:static left-0 top-0 w-64 h-screen bg-gray-900 z-30 lg:z-0 transform transition-transform duration-300 ease-in-out lg:transform-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <Sidebar
           currentPage={currentPage}
           onNavigate={navigate}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          selectedPlanId={selectedPlanId}
+          selectedPlanId={userPlanId}
+          planLabel={planInfo.label}
+          planIcon={planInfo.icon}
+          daysLeft={userPlanId === 'free' ? daysLeft : null}
+          onUpgrade={() => navigate('pricing')}
           session={session}
         />
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 w-full lg:w-auto overflow-hidden">
         <Header
           userRole={userRole}
@@ -290,23 +385,25 @@ const App: React.FC = () => {
         </main>
       </div>
 
-      {/* Popups */}
+      {/* ── Popups ── */}
+      {showFreemiumPopup && userPlanId === 'free' && (
+        <FreemiumPopup
+          daysLeft={daysLeft}
+          onClose={() => setShowFreemiumPopup(false)}
+          onUpgrade={() => { setShowFreemiumPopup(false); navigate('pricing'); }}
+        />
+      )}
       {showStartupPopup && (
         <StartupPopup onClose={() => setShowStartupPopup(false)} />
       )}
       {showMotorPopup && (
         <MotorTributarioPopup
           userPhone={userPhone}
-          onClose={() => {
-            setShowMotorPopup(false);
-            localStorage.setItem('taxreform_motor_dismissed', 'true');
-          }}
+          onClose={() => { setShowMotorPopup(false); localStorage.setItem('taxreform_motor_dismissed', 'true'); }}
         />
       )}
       {showUpsellPopup && (
-        <UpsellPopup
-          onClose={() => setShowUpsellPopup(false)}
-        />
+        <UpsellPopup onClose={() => setShowUpsellPopup(false)} />
       )}
     </div>
   );
