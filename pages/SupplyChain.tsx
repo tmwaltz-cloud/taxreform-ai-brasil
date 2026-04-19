@@ -252,14 +252,30 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
                        <h3 className="font-bold text-slate-800 flex items-center"><TrendingDown className="w-5 h-5 mr-2 text-brand-600" /> Simulação Conceitual de Cadeia: Atual vs Reforma</h3>
-                       <div className="flex items-center gap-2">
+                       <div className="flex items-center gap-2 flex-wrap">
                          <label className="text-sm font-medium text-slate-600">Regime Futuro:</label>
-                         <select value={futureRegime} onChange={(e) => setFutureRegime(e.target.value)} className="text-sm px-3 py-1.5 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-brand-500 outline-none">
+                         <select
+                           value={futureRegime}
+                           onChange={(e) => setFutureRegime(e.target.value)}
+                           className="text-sm px-3 py-1.5 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-brand-500 outline-none"
+                         >
                            <option value="Simples Nacional">Simples Nacional</option>
                            <option value="Simples Dual (Híbrido)">Simples Dual (Híbrido)</option>
                            <option value="Lucro Presumido">Lucro Presumido</option>
                            <option value="Lucro Real">Lucro Real</option>
                          </select>
+                         <button
+                           onClick={() => {
+                             try {
+                               setSimulationMetrics({ ...simuladorEstrategicoIva(input, futureRegime) });
+                             } catch (err) {
+                               console.error('[SupplyChain] Recalcular erro:', err);
+                             }
+                           }}
+                           className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg transition shadow-sm"
+                         >
+                           ↻ Recalcular
+                         </button>
                        </div>
                      </div>
                      <p className="text-sm text-slate-500 mb-4">Comparativo do impacto tributário na formação do preço de custo (líquido de impostos) ao longo da cadeia.</p>

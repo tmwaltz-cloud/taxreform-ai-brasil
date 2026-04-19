@@ -241,13 +241,32 @@ export const simuladorEstrategicoIva = (input: SupplyChainInput, futureRegime?: 
   const cred_total_atual = +(cred_pis_emp + cred_icms_emp).toFixed(2);
   const trib_liq_atual   = +(imp_bruto_atual - cred_total_atual).toFixed(2);
 
-  // PÓS-REFORMA — IVA Dual
-  const iva_bruto_emp = +(vEmp * aliq_iva).toFixed(2);
-  const aliq_cred_forn = getCreditoIvaForn(input.supplierRegime);
-  const cred_iva_emp   = +(vForn * aliq_cred_forn * perc_cred_iva).toFixed(2);
-  const iva_liq_emp    = +(iva_bruto_emp - cred_iva_emp).toFixed(2);
+  // PÓS-REFORMA — IVA Dual ajustado pelo regimeFuturo
+  // Simples Nacional convencional: não recolhe IVA integral, recolhe via DAS
+  // Crédito que gera para compradores = cred_sn_conv (~2,7%)
+  // Simples Dual/Híbrido: recolhe IVA integral → gera crédito integral
+  const getAliqIvaFuturo = (r: string): number => {
+    if (r.includes('Híbrido') || r.includes('Dual')) return aliq_iva;
+    if (r.includes('Simples')) return das_efetivo; // Simples conv: recolhe DAS ~6%, não IVA
+    return aliq_iva; // Lucro Presumido / Lucro Real
+  };
+  const getCreditoGeradoFuturo = (r: string): number => {
+    if (r.includes('Híbrido') || r.includes('Dual')) return aliq_iva;
+    if (r.includes('Simples')) return cred_sn_conv; // ~2,7% de crédito para quem compra
+    return aliq_iva; // crédito integral
+  };
 
-  const split_retido    = iva_liq_emp;
+  const aliq_iva_futuro   = getAliqIvaFuturo(regimeFuturo);
+  const iva_bruto_emp     = +(vEmp * aliq_iva_futuro).toFixed(2);
+  const aliq_cred_forn    = getCreditoIvaForn(input.supplierRegime);
+  // No Simples conv futuro, sem direito a crédito de entrada (não recolhe IVA)
+  const temCredIvaFuturo  = !regimeFuturo.includes('Simples') || regimeFuturo.includes('Híbrido') || regimeFuturo.includes('Dual');
+  const cred_iva_emp      = temCredIvaFuturo ? +(vForn * aliq_cred_forn * perc_cred_iva).toFixed(2) : 0;
+  const iva_liq_emp       = +(iva_bruto_emp - cred_iva_emp).toFixed(2);
+  // Crédito que esta empresa gera para seus clientes B2B no regime futuro
+  const cred_gerado_futuro = getCreditoGeradoFuturo(regimeFuturo);
+
+  const split_retido    = temCredIvaFuturo ? iva_liq_emp : 0; // Simples conv não tem split payment do IVA
   const float_perdido   = +(vEmp * aliq_iva * (25/30)).toFixed(2);
   const diff_imposto_pago = +(iva_liq_emp - trib_liq_atual).toFixed(2);
 
@@ -284,11 +303,11 @@ export const simuladorEstrategicoIva = (input: SupplyChainInput, futureRegime?: 
 
   if (diff_imposto_pago > 0) {
     const isServicos = input.companySector.includes('Serviço');
-    const isSimples = input.companyRegime.includes('Simples') && !input.companyRegime.includes('Híbrido');
+    const isSimples = regimeFuturo.includes('Simples') && !regimeFuturo.includes('Híbrido');
     const fornSimples = input.supplierRegime.includes('Simples') && !input.supplierRegime.includes('Híbrido');
 
-    if (isServicos && (input.companyRegime.includes('Lucro Presumido') || isSimples)) {
-      impactReason = `O aumento de ${fmt(Math.abs(diff_imposto_pago))} ocorre porque empresas de serviços no ${input.companyRegime} tinham carga PIS/COFINS de apenas ${fmtPerc(aliq_piscof_emp)}${aliq_icms_emp > 0 ? ` + ISS ${fmtPerc(aliq_icms_emp)}` : ''}, sem direito a crédito de entrada. Com a reforma, a alíquota sobe para ${fmtPerc(aliq_iva)}, e mesmo com créditos de ${fmt(cred_iva_emp)} sobre compras, o tributo líquido é maior. Este é o efeito mais impactante para o setor de serviços — historicamente subtributado em PIS/COFINS (Lei 9.718/98).`;
+    if (isServicos && (regimeFuturo.includes('Lucro Presumido') || isSimples)) {
+      impactReason = `O aumento de ${fmt(Math.abs(diff_imposto_pago))} ocorre porque empresas de serviços no ${regimeFuturo} tinham carga PIS/COFINS de apenas ${fmtPerc(aliq_piscof_emp)}${aliq_icms_emp > 0 ? ` + ISS ${fmtPerc(aliq_icms_emp)}` : ''}, sem direito a crédito de entrada. Com a reforma, a alíquota sobe para ${fmtPerc(aliq_iva)}, e mesmo com créditos de ${fmt(cred_iva_emp)} sobre compras, o tributo líquido é maior. Este é o efeito mais impactante para o setor de serviços — historicamente subtributado em PIS/COFINS (Lei 9.718/98).`;
     } else if (fornSimples) {
       impactReason = `O aumento de ${fmt(Math.abs(diff_imposto_pago))} é agravado porque seu fornecedor está no Simples Nacional convencional, que gera apenas ~${fmtPerc(cred_sn_conv)} de crédito CBS+IBS (≈20% do IVA integral). Se o fornecedor migrasse para o Simples Híbrido ou Lucro Presumido, o crédito subiria para ${fmtPerc(aliq_iva)}, reduzindo seu tributo líquido em até ${fmt(vForn * (aliq_iva - cred_sn_conv) * perc_cred_iva)}/nota.`;
     } else {
