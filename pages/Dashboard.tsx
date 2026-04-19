@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchLatestUpdates } from '../services/geminiService';
+import { useRateLimit } from '../components/RateLimitBanner';
 import { NewsItem, UserRole } from '../types';
 import { Newspaper, AlertTriangle, ArrowRight, RefreshCw, ExternalLink, Calendar, CheckCircle, Flame, TrendingUp, Radio, ChevronLeft, ChevronRight, X, FileText, Database, DollarSign, Eye, MessageSquareText, WifiOff } from 'lucide-react';
 
@@ -82,6 +83,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const { handleError: handleRateLimit, banner: rateLimitBanner } = useRateLimit(() => window.dispatchEvent(new CustomEvent('taxreform:upgrade')));
   const [selectedAction, setSelectedAction] = useState<{ title: string, description: string, deadline: string, steps: string[], legislation?: string, linkTo?: 'supply-chain' | 'interpreter' | 'consultant' | 'accountant-guide', linkText?: string } | null>(null);
 
   const trendingTopics = ["#SplitPayment", "#SimplesNacional", "#TravaBancária", "#IBS_CBS", "#PLP68_2024"];
@@ -102,6 +104,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
       setCurrentSlide(0);
     } catch (e: any) {
       console.error('[Dashboard] Erro ao carregar notícias:', e);
+      // Se rate limit → mostra banner de upsell, não usa fallback
+      if (handleRateLimit(e)) return;
       // Fallback: mostrar conteúdo local em vez de tela vazia
       const filtered = topic
         ? FALLBACK_NEWS.filter(n =>
@@ -276,7 +280,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
   const currentNews = updates[currentSlide];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 relative">
+    <>
+      {rateLimitBanner}
+      <div className="space-y-6 animate-in fade-in duration-500 relative">
       
       {/* TOP HEADER: Trending Bar */}
       <div className="bg-white rounded-xl p-3 flex items-center overflow-x-auto whitespace-nowrap scrollbar-hide border border-slate-200 shadow-sm">

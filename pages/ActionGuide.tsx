@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getActionGuide } from '../services/geminiService';
+import { useRateLimit } from '../components/RateLimitBanner';
 import { Brain, CheckSquare, ArrowRight, Home, Download, BookOpenCheck } from 'lucide-react';
 
 interface ActionGuideProps {
@@ -12,14 +13,15 @@ interface ActionGuideProps {
 export const ActionGuide: React.FC<ActionGuideProps> = ({ actionId, actionTitle, onNavigateHome, onNavigateToInterpreter }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { handleError: handleRateLimit, banner: rateLimitBanner } = useRateLimit(() => window.dispatchEvent(new CustomEvent('taxreform:upgrade')));
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const guideData = await getActionGuide(actionId, actionTitle);
         setData(guideData);
-      } catch (error) {
-        console.error(error);
+      } catch (error: any) {
+        if (!handleRateLimit(error)) console.error(error);
       } finally {
         setLoading(false);
       }
@@ -42,6 +44,7 @@ export const ActionGuide: React.FC<ActionGuideProps> = ({ actionId, actionTitle,
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+      {rateLimitBanner}
       <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
         {/* Header */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserRole } from '../types';
 import { askTaxConsultant } from '../services/geminiService';
+import { useRateLimit } from '../components/RateLimitBanner';
 import { MessageSquareText, Send, User, Bot, Sparkles, Home, ArrowRight, Save, Download, Loader2 } from 'lucide-react';
 
 interface ConsultantProps {
@@ -25,6 +26,7 @@ export const Consultant: React.FC<ConsultantProps> = ({ userRole, onNavigateHome
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { handleError: handleRateLimit, banner: rateLimitBanner } = useRateLimit(() => window.dispatchEvent(new CustomEvent('taxreform:upgrade')));
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -50,8 +52,10 @@ export const Consultant: React.FC<ConsultantProps> = ({ userRole, onNavigateHome
     try {
       const response = await askTaxConsultant(question, userRole);
       setMessages([...newMessages, { role: 'assistant', content: response }]);
-    } catch (error) {
-      setMessages([...newMessages, { role: 'assistant', content: "Erro ao processar sua consulta. Tente novamente." }]);
+    } catch (error: any) {
+      if (!handleRateLimit(error)) {
+        setMessages([...newMessages, { role: 'assistant', content: "Erro ao processar sua consulta. Tente novamente." }]);
+      }
     } finally {
       setLoading(false);
     }
@@ -76,6 +80,7 @@ export const Consultant: React.FC<ConsultantProps> = ({ userRole, onNavigateHome
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
+      {rateLimitBanner}
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <div className="flex items-center gap-3">
            <div className="bg-brand-100 p-2 rounded-lg">

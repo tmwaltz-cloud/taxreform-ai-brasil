@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserRole } from '../types';
 import { interpretLegalText } from '../services/geminiService';
+import { useRateLimit } from '../components/RateLimitBanner';
 import { BookOpen, Zap, CheckCircle, AlertTriangle, Home, Save, Download, Loader2 } from 'lucide-react';
 
 interface InterpreterProps {
@@ -14,6 +15,7 @@ export const Interpreter: React.FC<InterpreterProps> = ({ userRole, onNavigateHo
   const [interpretation, setInterpretation] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { handleError: handleRateLimit, banner: rateLimitBanner } = useRateLimit(() => window.dispatchEvent(new CustomEvent('taxreform:upgrade')));
 
   React.useEffect(() => {
     if (initialText) {
@@ -27,8 +29,8 @@ export const Interpreter: React.FC<InterpreterProps> = ({ userRole, onNavigateHo
     try {
       const result = await interpretLegalText(text, userRole);
       setInterpretation(result);
-    } catch (error) {
-      alert("Erro ao interpretar texto.");
+    } catch (error: any) {
+      if (!handleRateLimit(error)) alert("Erro ao interpretar texto.");
     } finally {
       setLoading(false);
     }
@@ -53,6 +55,7 @@ export const Interpreter: React.FC<InterpreterProps> = ({ userRole, onNavigateHo
 
   return (
     <div className="space-y-6">
+      {rateLimitBanner}
       <div className="max-w-4xl mx-auto">
         <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>

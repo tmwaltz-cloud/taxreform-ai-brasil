@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getAccountantStrategicGuide } from '../services/geminiService';
+import { useRateLimit } from '../components/RateLimitBanner';
 import { AccountantGuideData } from '../types';
 import { Brain, Database, Cpu, Users, ArrowRight, CheckSquare, Lightbulb, ShieldAlert, Download, Save, Home, BookOpenCheck } from 'lucide-react';
 
@@ -10,14 +11,15 @@ interface AccountantGuideProps {
 export const AccountantGuide: React.FC<AccountantGuideProps> = ({ onNavigateHome }) => {
   const [data, setData] = useState<AccountantGuideData | null>(null);
   const [loading, setLoading] = useState(true);
+  const { handleError: handleRateLimit, banner: rateLimitBanner } = useRateLimit(() => window.dispatchEvent(new CustomEvent('taxreform:upgrade')));
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const guideData = await getAccountantStrategicGuide();
         setData(guideData);
-      } catch (error) {
-        console.error(error);
+      } catch (error: any) {
+        if (!handleRateLimit(error)) console.error(error);
       } finally {
         setLoading(false);
       }
@@ -51,6 +53,7 @@ export const AccountantGuide: React.FC<AccountantGuideProps> = ({ onNavigateHome
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      {rateLimitBanner}
       {/* Header */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
