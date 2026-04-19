@@ -204,11 +204,12 @@ const App: React.FC = () => {
   }, []);
 
   // ─── Rota inicial após auth ──────────────────────────────────────────────
+  // 'pricing' fora da lista: usuário logado pode navegar para pricing para upgrade
   useEffect(() => {
     if (loading) return;
     if (session) {
-      const isPublic = ['landing', 'login', 'signup', 'pricing', 'sales'].includes(currentPage);
-      if (isPublic) setCurrentPage('dashboard');
+      const redirectToApp = ['landing', 'login', 'signup', 'sales'].includes(currentPage);
+      if (redirectToApp) setCurrentPage('dashboard');
     }
   }, [session, loading]);
 
@@ -323,6 +324,26 @@ const App: React.FC = () => {
           />
         );
     }
+  }
+
+  // ─── Pricing para usuário logado (upgrade de plano) ─────────────────────
+  // Usuário free pode navegar para pricing sem ser deslogado
+  if (currentPage === 'pricing') {
+    return (
+      <Pricing
+        onNavigate={(page) => {
+          // Após escolher plano, volta para dashboard ou vai para signup
+          if (page === 'signup') navigate('dashboard');
+          else navigate(page as any);
+        }}
+        userData={session?.user ? {
+          name: session.user.user_metadata?.name ?? '',
+          phone: session.user.user_metadata?.phone ?? '',
+          email: session.user.email ?? '',
+          role: session.user.user_metadata?.role,
+        } : null}
+      />
+    );
   }
 
   // ─── Admin ───────────────────────────────────────────────────────────────
