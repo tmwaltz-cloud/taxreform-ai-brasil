@@ -526,5 +526,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
          </div>
       </div>
     </div>
+    </>
   );
 };
