@@ -192,6 +192,13 @@ const App: React.FC = () => {
     loadProfile();
   }, [session]);
 
+  // ─── Listener global de upgrade (disparado pelo RateLimitBanner) ───────────
+  useEffect(() => {
+    const handler = () => navigate('pricing');
+    window.addEventListener('taxreform:upgrade', handler);
+    return () => window.removeEventListener('taxreform:upgrade', handler);
+  }, []);
+
   // ─── Resize ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const handleResize = () => {
