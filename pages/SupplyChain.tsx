@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SupplyChainInput, SupplyChainResult } from '../types';
 import { runSupplyChainAnalysis, simuladorEstrategicoIva } from '../services/geminiService';
 import { Link as LinkIcon, Home, ArrowRight, Factory, Building2, Truck, AlertTriangle, CheckCircle, TrendingDown, Save, Download, Loader2, Users, ShoppingBag, Lightbulb } from 'lucide-react';
@@ -24,16 +24,25 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
   const [simulationMetrics, setSimulationMetrics] = useState<any>(null);
   const [analysisMode, setAnalysisMode] = useState<'ai' | 'local'>('ai');
 
-  useEffect(() => {
-    if (!result) return;
+  // Ref sempre atualizada com o input corrente — evita closure stale
+  const inputRef = useRef(input);
+  useEffect(() => { inputRef.current = input; }, [input]);
+
+  // Função centralizada de recálculo — usa sempre inputRef.current
+  const recalcular = useCallback((regime: string) => {
     try {
-      // Spread garante nova referência → React detecta mudança e re-renderiza
-      const metrics = simuladorEstrategicoIva(input, futureRegime);
+      const metrics = simuladorEstrategicoIva(inputRef.current, regime);
       setSimulationMetrics({ ...metrics });
     } catch (err) {
-      console.error('[SupplyChain] Erro ao recalcular métricas:', err);
+      console.error('[SupplyChain] Erro ao recalcular:', err);
     }
-  }, [futureRegime]);  // Só futureRegime — evita loop com input e result
+  }, []);
+
+  // Recalcula automaticamente quando futureRegime muda
+  useEffect(() => {
+    if (!result) return;
+    recalcular(futureRegime);
+  }, [futureRegime, recalcular]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -45,9 +54,13 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
     setLoading(true);
     try {
       const data = await runSupplyChainAnalysis(input);
+      const regimeInicial = input.companyRegime;
       setResult(data);
-      setFutureRegime(input.companyRegime);
-      setSimulationMetrics(simuladorEstrategicoIva(input, input.companyRegime));
+      setFutureRegime(regimeInicial);
+      // Força recálculo com o input atual (inputRef.current ainda não atualizou, usar input diretamente)
+      try {
+        setSimulationMetrics({ ...simuladorEstrategicoIva(input, regimeInicial) });
+      } catch (e) { console.error(e); }
       setAnalysisMode('ai');
     } catch (err: any) {
       console.warn('[SupplyChain] Usando fallback local:', err?.message);
@@ -75,8 +88,9 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
         ],
         ...metrics,
       });
-      setFutureRegime(input.companyRegime);
-      setSimulationMetrics(metrics);
+      const regimeInicialLocal = input.companyRegime;
+      setFutureRegime(regimeInicialLocal);
+      setSimulationMetrics({ ...metrics });
       setAnalysisMode('local');
     } finally {
       setLoading(false);
@@ -265,13 +279,7 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
                            <option value="Lucro Real">Lucro Real</option>
                          </select>
                          <button
-                           onClick={() => {
-                             try {
-                               setSimulationMetrics({ ...simuladorEstrategicoIva(input, futureRegime) });
-                             } catch (err) {
-                               console.error('[SupplyChain] Recalcular erro:', err);
-                             }
-                           }}
+                           onClick={() => recalcular(futureRegime)}
                            className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg transition shadow-sm"
                          >
                            ↻ Recalcular
