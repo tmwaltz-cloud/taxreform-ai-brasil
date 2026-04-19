@@ -25,14 +25,15 @@ export const SupplyChain: React.FC<SupplyChainProps> = ({ onNavigateHome }) => {
   const [analysisMode, setAnalysisMode] = useState<'ai' | 'local'>('ai');
 
   useEffect(() => {
-    if (result) {
-      try {
-        setSimulationMetrics(simuladorEstrategicoIva(input, futureRegime));
-      } catch (err) {
-        console.error('[SupplyChain] Erro ao recalcular métricas:', err);
-      }
+    if (!result) return;
+    try {
+      // Spread garante nova referência → React detecta mudança e re-renderiza
+      const metrics = simuladorEstrategicoIva(input, futureRegime);
+      setSimulationMetrics({ ...metrics });
+    } catch (err) {
+      console.error('[SupplyChain] Erro ao recalcular métricas:', err);
     }
-  }, [futureRegime, input, result]);
+  }, [futureRegime]);  // Só futureRegime — evita loop com input e result
 
   const handleInputChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
