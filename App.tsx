@@ -351,7 +351,6 @@ const App: React.FC = () => {
           email: session.user.email ?? '',
           role: session.user.user_metadata?.role,
         } : null}
-        trialExpired={trialExpired}
       />
     );
   }
