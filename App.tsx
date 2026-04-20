@@ -127,26 +127,24 @@ const App: React.FC = () => {
       setSession(session);
       setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      // Carrega perfil no login — garante que token está disponível
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user?.id) {
+        loadUserProfile(session.user.id);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
 
   // ─── Carregar perfil do usuário (plano real) ─────────────────────────────
-  useEffect(() => {
-    if (!session?.user?.id) return;
-
-    const loadProfile = async () => {
-      // Garante que o token JWT está disponível antes da query
-      // Evita 401 quando a sessão acaba de ser estabelecida
-      const { data: { session: freshSession } } = await supabase.auth.getSession();
-      if (!freshSession) return;
-
+  // Função extraída para ser chamada tanto pelo useEffect quanto pelo auth listener
+  const loadUserProfile = async (userId: string) => {
+    try {
       const { data, error } = await supabase
         .from('user_profiles')
         .select('plan_id, plan_status, trial_ends_at')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .single();
 
       if (!error && data) {
@@ -169,7 +167,7 @@ const App: React.FC = () => {
           const fp = getDeviceFingerprint();
           try {
             const { data: fpResult } = await supabase.rpc('check_device_fingerprint', {
-              p_user_id: session.user.id,
+              p_user_id: userId,
               p_fingerprint: fp,
             });
             if (fpResult?.blocked) {
@@ -186,16 +184,20 @@ const App: React.FC = () => {
               await supabase
                 .from('user_profiles')
                 .update({ plan_status: 'suspended' })
-                .eq('user_id', session.user.id);
+                .eq('user_id', userId);
               setUserPlanStatus('suspended');
             }
           }
         }
       }
-    };
+    } catch (err) {
+      console.warn('[App] loadUserProfile erro:', err);
+    }
+  };
 
-    loadProfile();
-  }, [session]);
+  useEffect(() => {
+    if (session?.user?.id) loadUserProfile(session.user.id);
+  }, []);  // Só na montagem — o auth listener cuida dos logins subsequentes
 
   // ─── Listener global de upgrade (disparado pelo RateLimitBanner) ───────────
   useEffect(() => {
