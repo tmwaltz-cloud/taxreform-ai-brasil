@@ -138,6 +138,11 @@ const App: React.FC = () => {
     if (!session?.user?.id) return;
 
     const loadProfile = async () => {
+      // Garante que o token JWT está disponível antes da query
+      // Evita 401 quando a sessão acaba de ser estabelecida
+      const { data: { session: freshSession } } = await supabase.auth.getSession();
+      if (!freshSession) return;
+
       const { data, error } = await supabase
         .from('user_profiles')
         .select('plan_id, plan_status, trial_ends_at')
