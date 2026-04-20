@@ -4,6 +4,7 @@ import { UserRole, AuthView } from "../types";
 interface PricingProps {
   onNavigate: (view: AuthView) => void;
   userData?: { name: string; phone: string; email: string; role: UserRole } | null;
+  planExpired?: boolean; // true = plano vencido, desabilita opção gratuita
 }
 
 // ─── Configuração dos planos ───────────────────────────────────────────────
@@ -108,21 +109,18 @@ const ShieldIcon = () => (
 );
 
 // ─── Componente principal ──────────────────────────────────────────────────
-export function Pricing({ onNavigate, userData }: PricingProps) {
+export function Pricing({ onNavigate, userData, planExpired = false }: PricingProps) {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
   const hasAccount = !!userData?.email;
   const savings = 27 * 12 - 97;
 
   const handleCTA = (planId: string, kiwifyUrl: string | null) => {
     if (planId === 'free') {
-      // Freemium → cadastro direto, sem pagamento
-      if (hasAccount) {
-        onNavigate('login');
-      } else {
-        sessionStorage.setItem('selectedPlanUrl', '');
-        sessionStorage.setItem('selectedPlanId', 'free');
-        onNavigate('signup');
-      }
+      // Se plano vencido ou já tem conta → NÃO permite voltar ao free
+      if (planExpired || hasAccount) return;
+      sessionStorage.setItem('selectedPlanUrl', '');
+      sessionStorage.setItem('selectedPlanId', 'free');
+      onNavigate('signup');
       return;
     }
 
@@ -280,9 +278,20 @@ export function Pricing({ onNavigate, userData }: PricingProps) {
                 {/* CTA */}
                 <button
                   onClick={() => handleCTA(plan.id, plan.kiwifyUrl)}
-                  className={`w-full py-3 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 ${getButtonStyle(plan)}`}
+                  disabled={plan.id === 'free' && (planExpired || hasAccount)}
+                  className={`w-full py-3 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 ${
+                    plan.id === 'free' && (planExpired || hasAccount)
+                      ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-50'
+                      : getButtonStyle(plan)
+                  }`}
                 >
-                  {hasAccount && plan.id !== 'free' ? 'Ir para pagamento' : plan.cta}
+                  {plan.id === 'free' && planExpired
+                    ? 'Período gratuito encerrado'
+                    : plan.id === 'free' && hasAccount
+                    ? 'Já utilizado'
+                    : hasAccount && plan.id !== 'free'
+                    ? 'Ir para pagamento'
+                    : plan.cta}
                 </button>
               </div>
             </div>

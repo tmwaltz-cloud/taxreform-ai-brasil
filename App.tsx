@@ -270,7 +270,8 @@ const App: React.FC = () => {
 
   const handleSignUpSuccess = (planId: PlanId) => {
     if (planId === 'free') {
-      navigate('onboarding');
+      // Após cadastro free → vai direto para dashboard (não volta para pricing)
+      navigate('dashboard');
     } else {
       navigate('login');
     }
@@ -319,7 +320,7 @@ const App: React.FC = () => {
       case 'onboarding':
         return (
           <Onboarding
-            onComplete={() => navigate('pricing')}
+            onComplete={() => navigate('dashboard')}
             onLearnMore={() => navigate('pricing')}
           />
         );
@@ -336,19 +337,21 @@ const App: React.FC = () => {
   // ─── Pricing para usuário logado (upgrade de plano) ─────────────────────
   // Usuário free pode navegar para pricing sem ser deslogado
   if (currentPage === 'pricing') {
+    const isExpired = userPlanId === 'free' && daysLeft <= 0;
     return (
       <Pricing
         onNavigate={(page) => {
-          // Após escolher plano, volta para dashboard ou vai para signup
           if (page === 'signup') navigate('dashboard');
           else navigate(page as any);
         }}
+        planExpired={isExpired}
         userData={session?.user ? {
           name: session.user.user_metadata?.name ?? '',
           phone: session.user.user_metadata?.phone ?? '',
           email: session.user.email ?? '',
           role: session.user.user_metadata?.role,
         } : null}
+        trialExpired={trialExpired}
       />
     );
   }

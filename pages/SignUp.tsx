@@ -176,7 +176,11 @@ export const SignUp: React.FC<SignUpProps> = ({
   };
 
   // ── Entrar na plataforma (freemium) ───────────────────────────────────────
+  // Vai direto para o dashboard — não volta para pricing
   const handleEnterApp = () => {
+    // Limpa qualquer sessionStorage residual
+    sessionStorage.removeItem('selectedPlanId');
+    sessionStorage.removeItem('selectedPlanUrl');
     onSignUpSuccess('free');
   };
 
