@@ -13,7 +13,6 @@ import { Interpreter } from './pages/Interpreter';
 import { SupplyChain } from './pages/SupplyChain';
 import { AccountantGuide } from './pages/AccountantGuide';
 import { ActionGuide } from './pages/ActionGuide';
-import { Onboarding } from './pages/Onboarding';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { Admin } from './pages/Admin';
 
@@ -27,7 +26,7 @@ const ADMIN_EMAIL = 'tmwaltz@gmail.com';
 
 export type PageType =
   | 'landing' | 'login' | 'signup' | 'pricing' | 'sales'
-  | 'onboarding' | 'forgot-password' | 'dashboard' | 'consultant'
+  | 'forgot-password' | 'dashboard' | 'consultant'
   | 'interpreter' | 'supply-chain' | 'accountant-guide' | 'action-guide' | 'admin';
 
 export type PlanId = 'free' | 'monthly' | 'lifetime';
@@ -284,8 +283,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleOnboardingComplete = () => navigate('dashboard');
-
   const userRole = session?.user?.user_metadata?.role;
   const userPhone = session?.user?.user_metadata?.phone ?? '';
   const isAdmin = session?.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -324,18 +321,11 @@ const App: React.FC = () => {
         return <SalesPage onBack={() => navigate('landing')} onBuy={() => navigate('pricing')} />;
       case 'forgot-password':
         return <ForgotPassword onNavigate={navigate} />;
-      case 'onboarding':
-        return (
-          <Onboarding
-            onComplete={() => navigate('dashboard')}
-            onLearnMore={() => navigate('pricing')}
-          />
-        );
       default:
         return (
           <Landing
             onEnter={() => navigate('login')}
-            onStartOnboarding={() => navigate('onboarding')}
+            onGetStarted={() => navigate('pricing')}
           />
         );
     }

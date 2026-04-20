@@ -3,10 +3,10 @@ import { Activity } from 'lucide-react';
 
 interface LandingProps {
   onEnter: () => void;
-  onStartOnboarding: () => void;
+  onGetStarted: () => void;
 }
 
-export const Landing: React.FC<LandingProps> = ({ onEnter, onStartOnboarding }) => {
+export const Landing: React.FC<LandingProps> = ({ onEnter, onGetStarted }) => {
   const [scrolled, setScrolled] = useState(false);
   const [activePersona, setActivePersona] = useState<0 | 1 | 2>(0);
 
@@ -116,7 +116,7 @@ export const Landing: React.FC<LandingProps> = ({ onEnter, onStartOnboarding }) 
               Entrar
             </button>
             <button
-              onClick={onStartOnboarding}
+              onClick={onGetStarted}
               className="bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-xs sm:text-sm px-3 sm:px-4 py-2 rounded-lg transition"
             >
               Começar grátis →
@@ -148,10 +148,10 @@ export const Landing: React.FC<LandingProps> = ({ onEnter, onStartOnboarding }) 
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12 sm:mb-16">
             <button
-              onClick={onStartOnboarding}
+              onClick={onGetStarted}
               className="bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-sm sm:text-base px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl transition-all hover:-translate-y-0.5 shadow-lg shadow-emerald-500/20"
             >
-              Ver meu impacto — grátis →
+              Começar grátis →
             </button>
             <button
               onClick={onEnter}
@@ -322,10 +322,10 @@ export const Landing: React.FC<LandingProps> = ({ onEnter, onStartOnboarding }) 
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
-              onClick={onStartOnboarding}
+              onClick={onGetStarted}
               className="bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-sm sm:text-base px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl transition-all hover:-translate-y-0.5 shadow-lg shadow-emerald-500/20"
             >
-              Ver meu impacto — grátis →
+              Começar grátis →
             </button>
             <button
               onClick={onEnter}
