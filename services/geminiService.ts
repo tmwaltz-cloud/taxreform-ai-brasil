@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserRole, SimulationInput, SimulationResult, NewsItem, SupplyChainInput, SupplyChainResult, AccountantGuideData } from "../types";
+import { supabase } from "./supabaseClient";
 
 const geminiApiKey =
   import.meta.env.VITE_GEMINI_API_KEY ||
@@ -428,12 +429,42 @@ export const interpretLegalText = async (text: string, role: UserRole): Promise<
   } catch (error) { console.error('[Gemini] Interpreter error:', error); return 'Não foi possível interpretar o texto no momento.'; }
 };
 
+// ─── Contexto dinâmico do Monitor Tributário ──────────────────────────────────
+// Busca as últimas notícias reais do banco e formata como contexto para o JaxAI
+const getRecentNewsContext = async (): Promise<string> => {
+  try {
+    const { data, error } = await supabase
+      .from('tax_news')
+      .select('title, summary, source, date_pub, category, urgency')
+      .order('date_pub', { ascending: false })
+      .limit(8);
+
+    if (error || !data || data.length === 0) return '';
+
+    const lines = data.map(n =>
+      `• [${n.date_pub}] ${n.title} (${n.source}) — ${n.summary}`
+    ).join('\n');
+
+    return `\n\nNOTÍCIAS RECENTES DO MONITOR TRIBUTÁRIO (últimas publicações reais):\n${lines}\n\nUse estas informações como contexto prioritário ao responder. Se a pergunta do usuário estiver relacionada a algum desses temas, referencie as publicações acima.`;
+  } catch {
+    return '';
+  }
+};
+
 // ─── Consultant ───────────────────────────────────────────────────────────────
 export const askTaxConsultant = async (question: string, role: UserRole): Promise<string> => {
   checkRateLimit('consultant');
   try {
+    // Injeta as últimas notícias do Monitor como contexto antes de chamar o Gemini
+    const newsContext = await getRecentNewsContext();
+    const systemWithNews = SYSTEM_INSTRUCTION_BASE + '\n' + getRoleInstruction(role) + newsContext;
+
     return await withModelFallback(async (model) => {
-      const response = await ai.models.generateContent({ model, contents: `PERGUNTA (${role}): "${question}" Responda como JaxAI. Use Markdown.`, config: { tools: [{ googleSearch: {} }], systemInstruction: SYSTEM_INSTRUCTION_BASE + '\n' + getRoleInstruction(role) } });
+      const response = await ai.models.generateContent({
+        model,
+        contents: `PERGUNTA (${role}): "${question}" Responda como JaxAI. Use Markdown.`,
+        config: { tools: [{ googleSearch: {} }], systemInstruction: systemWithNews }
+      });
       return response.text || 'Sem resposta.';
     });
   } catch (error) { console.error('[Gemini] Consultant error:', error); return 'JaxAI: Servidores sobrecarregados. Tente em instantes.'; }
