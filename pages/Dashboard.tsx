@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchLatestUpdates } from '../services/geminiService';
 import { useRateLimit } from '../components/RateLimitBanner';
 import { NewsItem, UserRole } from '../types';
+import { supabase } from '../services/supabaseClient';
 import { Newspaper, AlertTriangle, ArrowRight, RefreshCw, ExternalLink, Calendar, CheckCircle, Flame, TrendingUp, Radio, ChevronLeft, ChevronRight, X, FileText, Database, DollarSign, Eye, MessageSquareText, WifiOff } from 'lucide-react';
 
 interface DashboardProps {
@@ -92,33 +93,64 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
     setLoading(true);
     setError(null);
     try {
+      // ── Fonte 1: Supabase tax_news (Monitor Tributário automático) ────────
+      let query = supabase
+        .from('tax_news')
+        .select('*')
+        .order('date_pub', { ascending: false })
+        .limit(10);
+
+      if (topic) {
+        const t = topic.replace('#', '');
+        query = query.or(`category.ilike.%${t}%,title.ilike.%${t}%,tags.cs.{${t}}`);
+      }
+
+      const { data: dbNews, error: dbError } = await query;
+
+      if (!dbError && dbNews && dbNews.length > 0) {
+        // Mapear para o formato NewsItem do app
+        const mapped: NewsItem[] = dbNews.map((n: any) => ({
+          title:       n.title,
+          summary:     n.summary,
+          impactLevel: n.impact_level as 'Alto' | 'Médio' | 'Baixo',
+          date:        new Date(n.date_pub).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
+          sourceUrl:   n.source_url,
+          sourceTitle: n.source,
+          category:    n.category,
+          urgency:     n.urgency,
+        }));
+        setUpdates(mapped);
+        setIsFallback(false);
+        setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+        setCurrentSlide(0);
+        return;
+      }
+
+      // ── Fonte 2: Gemini com Google Search (fallback quando banco vazio) ──
       const news = await fetchLatestUpdates(userRole, topic);
       if (Array.isArray(news) && news.length > 0) {
         setUpdates(news);
         setIsFallback(false);
         setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
       } else {
-        // API respondeu mas sem dados — usar fallback
         throw new Error('Resposta vazia da IA');
       }
       setCurrentSlide(0);
     } catch (e: any) {
       console.error('[Dashboard] Erro ao carregar notícias:', e);
-      // Se rate limit → mostra banner de upsell, não usa fallback
       if (handleRateLimit(e)) return;
-      // Fallback: mostrar conteúdo local em vez de tela vazia
+      // ── Fonte 3: Fallback estático ────────────────────────────────────────
       const filtered = topic
-        ? FALLBACK_NEWS.filter(n =>
+        ? FALLBACK_NEWS.filter((n: any) =>
             n.title.toLowerCase().includes(topic.replace('#', '').toLowerCase()) ||
-            n.category.toLowerCase().includes(topic.replace('#', '').toLowerCase())
+            (n.category ?? '').toLowerCase().includes(topic.replace('#', '').toLowerCase())
           )
         : FALLBACK_NEWS;
       setUpdates(filtered.length > 0 ? filtered : FALLBACK_NEWS);
       setIsFallback(true);
       setCurrentSlide(0);
-      // Mensagem amigável baseada no tipo de erro
-      if (e?.message?.includes('503') || e?.message?.includes('UNAVAILABLE') || e?.message?.includes('high demand')) {
-        setError('Servidores Gemini com alta demanda. Exibindo conteúdo local atualizado — tente novamente em alguns minutos.');
+      if (e?.message?.includes('503') || e?.message?.includes('UNAVAILABLE')) {
+        setError('Servidores com alta demanda. Exibindo conteúdo de referência.');
       } else if (e?.name === 'RateLimitError') {
         setError(e.message);
       } else {

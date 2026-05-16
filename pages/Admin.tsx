@@ -3,7 +3,7 @@ import {
   Users, BarChart2, Mail, Database, Settings,
   ArrowLeft, RefreshCw, Search, CheckCircle, XCircle,
   Crown, Zap, AlertTriangle, Send, Eye, EyeOff,
-  TrendingUp, UserCheck, UserX, Clock, Trash2, Info,
+  TrendingUp, UserCheck, UserX, Clock, Trash2, Info, Radio,
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
@@ -13,7 +13,7 @@ interface AdminProps {
   onBack: () => void;
 }
 
-type AdminTab = 'users' | 'metrics' | 'email' | 'database' | 'settings';
+type AdminTab = 'users' | 'metrics' | 'email' | 'database' | 'settings' | 'monitor';
 
 interface UserProfile {
   id: string;
@@ -63,11 +63,12 @@ export const Admin: React.FC<AdminProps> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
 
   const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'users',    label: 'Usuários',      icon: <Users size={16} /> },
-    { id: 'metrics',  label: 'Métricas',      icon: <BarChart2 size={16} /> },
-    { id: 'email',    label: 'Comunicação',   icon: <Mail size={16} /> },
+    { id: 'users',    label: 'Usuários',       icon: <Users size={16} /> },
+    { id: 'metrics',  label: 'Métricas',       icon: <BarChart2 size={16} /> },
+    { id: 'email',    label: 'Comunicação',    icon: <Mail size={16} /> },
+    { id: 'monitor',  label: 'Monitor News',   icon: <Radio size={16} /> },
     { id: 'database', label: 'Banco de Dados', icon: <Database size={16} /> },
-    { id: 'settings', label: 'Configurações', icon: <Settings size={16} /> },
+    { id: 'settings', label: 'Configurações',  icon: <Settings size={16} /> },
   ];
 
   return (
@@ -107,6 +108,7 @@ export const Admin: React.FC<AdminProps> = ({ onBack }) => {
         {activeTab === 'users'    && <TabUsers />}
         {activeTab === 'metrics'  && <TabMetrics />}
         {activeTab === 'email'    && <TabEmail />}
+        {activeTab === 'monitor'  && <TabMonitor />}
         {activeTab === 'database' && <TabDatabase />}
         {activeTab === 'settings' && <TabSettings />}
       </div>
@@ -667,6 +669,169 @@ const TabEmail: React.FC = () => {
   );
 };
 
+// ─── ABA: Monitor Tributário ──────────────────────────────────────────────────
+
+const TabMonitor: React.FC = () => {
+  const [running, setRunning]     = useState(false);
+  const [result, setResult]       = useState<{ ok?: boolean; news_count?: number; error?: string } | null>(null);
+  const [runs, setRuns]           = useState<any[]>([]);
+  const [news, setNews]           = useState<any[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  const fetchData = async () => {
+    setLoadingData(true);
+    const [runsRes, newsRes] = await Promise.all([
+      supabase.from('monitor_runs').select('*').order('started_at', { ascending: false }).limit(10),
+      supabase.from('tax_news').select('*').order('date_pub', { ascending: false }).limit(20),
+    ]);
+    setRuns(runsRes.data ?? []);
+    setNews(newsRes.data ?? []);
+    setLoadingData(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const runMonitor = async () => {
+    setRunning(true);
+    setResult(null);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${supabaseUrl}/functions/v1/monitor-tributario`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ triggered_by: 'manual' }),
+      });
+      const json = await res.json();
+      setResult(json);
+      await fetchData();
+    } catch (err: any) {
+      setResult({ error: err.message });
+    }
+    setRunning(false);
+  };
+
+  const statusColor = (s: string) =>
+    s === 'success' ? 'text-emerald-400' : s === 'error' ? 'text-red-400' : 'text-yellow-400';
+
+  const urgencyColor = (u: string) =>
+    u === 'high' ? 'text-red-400 bg-red-400/10 border-red-400/20'
+    : u === 'medium' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20'
+    : 'text-gray-400 bg-gray-400/10 border-gray-400/20';
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+
+      {/* Controle do Monitor */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <Radio size={16} className="text-emerald-400" /> Monitor Tributário Automático
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Roda automaticamente todo dia às 07h (Brasília) via pg_cron + Gemini Google Search.
+              Use o botão abaixo para disparo manual.
+            </p>
+          </div>
+          <button
+            onClick={runMonitor}
+            disabled={running}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-semibold text-sm rounded-lg transition disabled:opacity-50"
+          >
+            {running ? <RefreshCw size={14} className="animate-spin" /> : <Radio size={14} />}
+            {running ? 'Executando...' : 'Rodar Agora'}
+          </button>
+        </div>
+
+        {result && (
+          <div className={`px-4 py-3 rounded-lg border text-sm ${result.ok ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+            {result.ok
+              ? `✅ Monitor executado com sucesso — ${result.news_count} notícias salvas no banco.`
+              : `❌ Erro: ${result.error}`}
+          </div>
+        )}
+      </div>
+
+      {/* Histórico de execuções */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-300">📋 Histórico de Execuções</h3>
+          <button onClick={fetchData} disabled={loadingData}
+            className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-500 hover:text-gray-300 transition">
+            <RefreshCw size={12} className={loadingData ? 'animate-spin' : ''} /> Atualizar
+          </button>
+        </div>
+        {loadingData ? (
+          <div className="flex justify-center py-6"><RefreshCw size={16} className="text-emerald-500 animate-spin" /></div>
+        ) : runs.length === 0 ? (
+          <p className="text-gray-600 text-sm text-center py-4">Nenhuma execução registrada ainda.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-gray-600 uppercase tracking-wide border-b border-gray-800">
+                  <th className="py-2 text-left">Data/Hora</th>
+                  <th className="py-2 text-left">Status</th>
+                  <th className="py-2 text-left">Notícias</th>
+                  <th className="py-2 text-left">Trigger</th>
+                  <th className="py-2 text-left">Erro</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800/50">
+                {runs.map(r => (
+                  <tr key={r.id}>
+                    <td className="py-2 text-gray-400">{new Date(r.started_at).toLocaleString('pt-BR')}</td>
+                    <td className={`py-2 font-medium ${statusColor(r.status)}`}>{r.status}</td>
+                    <td className="py-2 text-gray-300">{r.news_count ?? '—'}</td>
+                    <td className="py-2 text-gray-500">{r.triggered_by}</td>
+                    <td className="py-2 text-red-400 max-w-[200px] truncate">{r.error_msg ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Notícias no banco */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-300">📰 Notícias no Banco ({news.length})</h3>
+        {loadingData ? (
+          <div className="flex justify-center py-6"><RefreshCw size={16} className="text-emerald-500 animate-spin" /></div>
+        ) : news.length === 0 ? (
+          <p className="text-gray-600 text-sm text-center py-4">Nenhuma notícia. Rode o monitor para popular.</p>
+        ) : (
+          <div className="space-y-3">
+            {news.map(n => (
+              <div key={n.id} className="border border-gray-800 rounded-lg p-3 space-y-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm text-white font-medium leading-snug">{n.title}</p>
+                  <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-medium ${urgencyColor(n.urgency)}`}>
+                    {n.urgency}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">{n.summary}</p>
+                <div className="flex items-center gap-3 text-[11px] text-gray-600">
+                  <span>{n.source}</span>
+                  <span>•</span>
+                  <span>{new Date(n.date_pub).toLocaleDateString('pt-BR')}</span>
+                  <span>•</span>
+                  <span className="text-emerald-600">{n.category}</span>
+                  {n.source_url && (
+                    <a href={n.source_url} target="_blank" rel="noopener noreferrer"
+                      className="text-blue-500 hover:text-blue-400">↗ Link</a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── ABA 4: Banco de Dados ────────────────────────────────────────────────────
 
 const TabDatabase: React.FC = () => {
@@ -676,7 +841,7 @@ const TabDatabase: React.FC = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [limit, setLimit] = useState(20);
 
-  const TABLES = ['user_profiles', 'pending_activations', 'newsletter_subscribers'];
+  const TABLES = ['user_profiles', 'tax_news', 'monitor_runs', 'pending_activations', 'newsletter_subscribers'];
 
   const fetchTable = useCallback(async () => {
     setLoading(true);
