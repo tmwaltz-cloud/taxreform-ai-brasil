@@ -131,22 +131,56 @@ const TabUsers: React.FC = () => {
     setTimeout(() => setMsg({ text: '', type: 'ok' }), 4000);
   };
 
-  // ── Fetch com tratamento de erro explícito ──────────────────────────────────
+  // ── Fetch: tenta query direta primeiro; se RLS bloquear, usa Edge Function ──
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
+
+    // Tentativa 1: query direta (funciona se RLS tiver policy de admin)
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      // Exibe o erro real — não esconde mais
-      setFetchError(`Erro ao carregar usuários: ${error.message} (código: ${error.code})`);
-      setUsers([]);
-    } else {
-      setUsers(data ?? []);
+    if (!error && data && data.length > 0) {
+      setUsers(data);
+      setLoading(false);
+      return;
     }
+
+    // Tentativa 2: Edge Function admin-list-users (service_role bypassa RLS)
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/admin-list-users`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        setUsers(json.users ?? []);
+        setLoading(false);
+        return;
+      }
+
+      const json = await res.json().catch(() => ({}));
+      setFetchError(
+        `RLS bloqueou acesso direto e a Edge Function retornou erro: ${json.error ?? res.statusText}. ` +
+        `Execute o SQL em supabase/rls_admin_fix.sql e faça deploy da função admin-list-users.`
+      );
+    } catch (fnErr: any) {
+      setFetchError(
+        `Erro ao carregar usuários: ${error?.message ?? fnErr.message}. ` +
+        `Execute o SQL em supabase/rls_admin_fix.sql para configurar as policies RLS.`
+      );
+    }
+
+    setUsers([]);
     setLoading(false);
   }, []);
 
@@ -430,17 +464,40 @@ const TabMetrics: React.FC = () => {
     const fetchMetrics = async () => {
       setLoading(true);
       setFetchError(null);
+
+      // Tentativa 1: query direta
+      let rows: any[] | null = null;
       const { data, error } = await supabase
         .from('user_profiles')
         .select('plan_id, plan_status, created_at');
 
-      if (error) {
-        setFetchError(`Erro: ${error.message}`);
-        setLoading(false);
-        return;
+      if (!error && data && data.length > 0) {
+        rows = data;
+      } else {
+        // Tentativa 2: Edge Function (bypassa RLS via service_role)
+        try {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await fetch(`${supabaseUrl}/functions/v1/admin-list-users`, {
+            headers: { 'Authorization': `Bearer ${session?.access_token}` },
+          });
+          if (res.ok) {
+            const json = await res.json();
+            rows = json.users ?? [];
+          } else {
+            setFetchError(`Sem permissão de admin. Execute supabase/rls_admin_fix.sql e faça deploy de admin-list-users.`);
+            setLoading(false);
+            return;
+          }
+        } catch (fnErr: any) {
+          setFetchError(`Erro: ${fnErr.message}`);
+          setLoading(false);
+          return;
+        }
       }
 
-      if (data) {
+      if (rows) {
+        const data = rows;
         const total = data.length;
         const free = data.filter(u => u.plan_id === 'free').length;
         const monthly = data.filter(u => u.plan_id === 'monthly').length;
