@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { usePlan }       from '../hooks/usePlan';
+import { UpgradeBanner } from '../components/PlanGate';
 import { fetchLatestUpdates } from '../services/geminiService';
 import { useRateLimit } from '../components/RateLimitBanner';
 import { NewsItem, UserRole } from '../types';
@@ -86,6 +88,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const { handleError: handleRateLimit, banner: rateLimitBanner } = useRateLimit(() => window.dispatchEvent(new CustomEvent('taxreform:upgrade')));
   const [selectedAction, setSelectedAction] = useState<{ title: string, description: string, deadline: string, steps: string[], legislation?: string, linkTo?: 'supply-chain' | 'interpreter' | 'consultant' | 'accountant-guide', linkText?: string } | null>(null);
+
+  const { plan, isPaid, isLoading: planLoading } = usePlan();
+  const NEWS_LIMIT = isPaid ? 999 : 3;
 
   const trendingTopics = ["#SplitPayment", "#SimplesNacional", "#TravaBancária", "#IBS_CBS", "#PLP68_2024"];
 
@@ -309,12 +314,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
     { date: "2033", title: "Vigência Plena do IVA Dual", description: "Vigência plena do IBS e extinção definitiva do ICMS/ISS.", risk: "Incompatibilidade total de sistemas legados.", urgency: "Baixa", status: "future" }
   ];
 
-  const currentNews = updates[currentSlide];
+  const visibleUpdates = isPaid ? updates : updates.slice(0, NEWS_LIMIT);
+  const currentNews    = visibleUpdates[Math.min(currentSlide, Math.max(0, visibleUpdates.length - 1))];
 
   return (
     <>
       {rateLimitBanner}
       <div className="space-y-6 animate-in fade-in duration-500 relative">
+      
+      {/* Banner plano free */}
+      {!planLoading && !isPaid && (
+        <UpgradeBanner plan={plan} />
+      )}
       
       {/* TOP HEADER: Trending Bar */}
       <div className="bg-white rounded-xl p-3 flex items-center overflow-x-auto whitespace-nowrap scrollbar-hide border border-slate-200 shadow-sm">
@@ -401,9 +412,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
             )}
 
             {/* Carousel de notícias */}
-            {!loading && updates.length > 0 && currentNews && (
+            {!loading && visibleUpdates.length > 0 && currentNews && (
                <div className="relative bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-md transition min-h-[300px] flex flex-col">
-                  {updates.length > 1 && (
+                  {visibleUpdates.length > 1 && (
                     <>
                       <div className="absolute inset-y-0 left-0 flex items-center z-10">
                         <button onClick={prevSlide} className="bg-white/80 p-2 rounded-r-lg shadow-md hover:bg-white transition">
@@ -451,7 +462,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
                   </div>
                   {updates.length > 1 && (
                     <div className="flex justify-center p-3 bg-slate-50 border-t border-slate-200">
-                      {updates.map((_, idx) => (
+                      {visibleUpdates.map((_, idx) => (
                         <button
                           key={idx}
                           onClick={() => setCurrentSlide(idx)}
@@ -461,6 +472,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ userRole, onViewChange, on
                     </div>
                   )}
                </div>
+            )}
+
+            {/* CTA upgrade para free */}
+            {!planLoading && !isPaid && updates.length > NEWS_LIMIT && (
+              <div
+                onClick={() => window.dispatchEvent(new CustomEvent('taxreform:upgrade'))}
+                className="mt-2 p-3 bg-brand-50 border border-brand-100 rounded-lg text-center cursor-pointer hover:bg-brand-100 transition-colors"
+              >
+                <p className="text-xs text-brand-700 font-medium">
+                  + {updates.length - NEWS_LIMIT} notícias disponíveis no plano pago
+                </p>
+                <p className="text-xs text-brand-500 mt-0.5">Clique para assinar →</p>
+              </div>
             )}
 
             {/* Estado vazio — só aparece se não carregou nada e não está em loading */}
